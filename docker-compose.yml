@@ -41,6 +41,25 @@ services:
       timeout: 5s
       retries: 5
 
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: nihongo-web
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://postgres:${DB_PASSWORD}@shared-postgres:5432/nihongo
+      - BOT_TOKEN=${BOT_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - shared
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nihongo-web.rule=Host(`nihongo.dltmxm.link`)"
+      - "traefik.http.routers.nihongo-web.entrypoints=websecure"
+      - "traefik.http.routers.nihongo-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.nihongo-web.loadbalancer.server.port=3000"
+
 networks:
   shared:
     external: true
