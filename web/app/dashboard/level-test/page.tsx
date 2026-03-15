@@ -48,8 +48,7 @@ export default function LevelTestPage() {
   };
 
   const selectAnswer = (answer: string) => {
-    const q = questions[currentIndex];
-    const newAnswers = { ...answers, [q.quizId]: answer };
+    const newAnswers = { ...answers, [currentIndex]: answer };
     setAnswers(newAnswers);
 
     if (currentIndex < questions.length - 1) {

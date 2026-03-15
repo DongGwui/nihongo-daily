@@ -81,10 +81,11 @@ export function calculateResult(
 ) {
   const scores: Record<string, { correct: number; total: number }> = {};
 
-  for (const q of questions) {
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
     if (!scores[q.level]) scores[q.level] = { correct: 0, total: 0 };
     scores[q.level].total++;
-    if (answers[q.quizId] === correctAnswers[q.quizId]) {
+    if (answers[i] === correctAnswers[q.quizId]) {
       scores[q.level].correct++;
     }
   }
