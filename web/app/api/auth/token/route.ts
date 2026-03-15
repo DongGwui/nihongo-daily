@@ -51,10 +51,8 @@ export async function GET(request: NextRequest) {
   });
 
   const cookie = sessionCookieOptions(jwt);
-  // request.url이 컨테이너 내부 호스트명을 사용할 수 있으므로 원래 호스트로 리다이렉트
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'nihongo.dltmxm.link';
-  const proto = request.headers.get('x-forwarded-proto') || 'https';
-  const redirectUrl = `${proto}://${host}/dashboard`;
+  const redirectUrl = `https://${host}/dashboard`;
   const response = NextResponse.redirect(redirectUrl);
   response.cookies.set(cookie);
 
