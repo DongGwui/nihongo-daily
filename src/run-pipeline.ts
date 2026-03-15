@@ -1,10 +1,9 @@
 /**
- * NHK 크롤링 + Gemini 퀴즈 생성 수동 실행
+ * 콘텐츠 생성 + Gemini 퀴즈 생성 수동 실행
  *
  * 홈서버: docker exec nihongo-app node dist/run-pipeline.js
- * 크롤링만: docker exec nihongo-app node dist/run-pipeline.js --crawl-only
  */
-import { crawlAndSave, fetchArticleList } from './pipeline/crawlers/nhk-easy.js';
+import { crawlAndSave } from './pipeline/crawlers/nhk-easy.js';
 import { batchGenerateQuizzes } from './pipeline/generators/quiz-generator.js';
 import { config } from './lib/config.js';
 import type { JlptLevel } from './db/schema.js';
@@ -12,24 +11,25 @@ import type { JlptLevel } from './db/schema.js';
 const crawlOnly = process.argv.includes('--crawl-only');
 
 async function main() {
-  console.log('=== NHK Easy News 크롤링 ===\n');
+  console.log('=== 일본어 학습 콘텐츠 생성 ===\n');
 
-  const articles = await fetchArticleList();
-  console.log(`최신 기사 ${articles.length}개 발견:`);
-  for (const [i, a] of articles.slice(0, 5).entries()) {
-    console.log(`  ${i + 1}. ${a.title.replace(/<[^>]*>/g, '')}`);
+  if (!config.GEMINI_API_KEY) {
+    console.error('GEMINI_API_KEY가 설정되지 않았습니다.');
+    process.exit(1);
   }
 
-  console.log('\nDB에 저장 중...');
-  const saved = await crawlAndSave(3);
-  console.log(`${saved}개 기사 저장 완료\n`);
+  console.log('Gemini로 학습 콘텐츠 생성 중...');
+  const saved = await crawlAndSave(5);
+  console.log(`${saved}개 콘텐츠 저장 완료\n`);
 
-  if (!crawlOnly && config.GEMINI_API_KEY) {
+  if (!crawlOnly) {
     console.log('=== Gemini 퀴즈 생성 ===\n');
-    const generated = await batchGenerateQuizzes('N3', 2);
-    console.log(`${generated}개 퀴즈 생성 완료`);
-  } else if (!config.GEMINI_API_KEY) {
-    console.log('GEMINI_API_KEY 미설정 → 퀴즈 생성 건너뜀');
+    for (const level of ['N5', 'N4', 'N3'] as JlptLevel[]) {
+      const generated = await batchGenerateQuizzes(level, 3);
+      if (generated > 0) {
+        console.log(`  ${level}: ${generated}개 퀴즈 생성`);
+      }
+    }
   }
 
   console.log('\n완료!');

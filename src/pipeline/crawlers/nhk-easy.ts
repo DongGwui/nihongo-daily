@@ -1,66 +1,55 @@
-import * as cheerio from 'cheerio';
 import { db } from '../../db/client.js';
 import { contents } from '../../db/schema.js';
+import { config } from '../../lib/config.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import type { JlptLevel } from '../../db/schema.js';
 
-const NHK_EASY_API = 'https://www3.nhk.or.jp/news/easy/news/list.json';
-const NHK_EASY_ARTICLE = 'https://www3.nhk.or.jp/news/easy';
+/**
+ * Gemini를 사용해 JLPT 레벨별 일본어 학습 콘텐츠를 생성합니다.
+ * NHK Easy News API 인증 변경으로 크롤링 대신 AI 생성 방식 사용.
+ */
 
-interface NhkArticle {
-  id: string;
+interface GeneratedContent {
   title: string;
-  titleWithRuby: string;
-  body: string;
-  bodyWithRuby: string;
-  publishedAt: Date;
-  url: string;
+  bodyJa: string;
+  bodyReading: string;
+  bodyKo: string;
+  type: 'news' | 'sentence' | 'grammar' | 'vocabulary';
 }
 
-export async function fetchArticleList(): Promise<{ news_id: string; title: string; title_with_ruby: string; news_prearranged_time: string }[]> {
-  const res = await fetch(NHK_EASY_API);
-  const data = await res.json() as Record<string, { news_id: string; title: string; title_with_ruby: string; news_prearranged_time: string }[]>;
-
-  // API returns { "YYYY-MM-DD": [...articles] }
-  const articles: { news_id: string; title: string; title_with_ruby: string; news_prearranged_time: string }[] = [];
-  for (const dateArticles of Object.values(data)) {
-    articles.push(...dateArticles);
+export async function fetchArticleList(): Promise<GeneratedContent[]> {
+  if (!config.GEMINI_API_KEY) {
+    console.warn('GEMINI_API_KEY not set, skipping content generation');
+    return [];
   }
 
-  return articles.slice(0, 10); // 최신 10개
-}
+  const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-export async function fetchArticleBody(newsId: string): Promise<{ body: string; bodyWithRuby: string }> {
-  const url = `${NHK_EASY_ARTICLE}/${newsId}/${newsId}.html`;
-  const res = await fetch(url);
-  const html = await res.text();
+  const prompt = `일본어 학습자(JLPT N3~N5)를 위한 짧은 일본어 읽기 자료 5개를 생성해주세요.
+각 자료는 다음 형식의 JSON 배열로 응답하세요:
 
-  const $ = cheerio.load(html);
-  const articleBody = $('#js-article-body');
+[
+  {
+    "title": "제목 (일본어)",
+    "bodyJa": "본문 (일본어, 3~5문장)",
+    "bodyReading": "본문 (후리가나 포함, 한자(읽기) 형태)",
+    "bodyKo": "본문 (한국어 번역)",
+    "type": "news"
+  }
+]
 
-  // Ruby 태그에서 후리가나 추출
-  const bodyWithRuby = articleBody.html() ?? '';
-  const body = articleBody.text().trim();
+주제: 일상생활, 계절, 음식, 여행, 문화 등 다양하게.
+난이도: N3~N5 수준의 쉬운 문장.
+반드시 JSON 배열로만 응답하세요.`;
 
-  return { body, bodyWithRuby };
-}
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
 
-function extractReadingFromRuby(html: string): string {
-  const $ = cheerio.load(html);
-  let result = '';
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) return [];
 
-  $('body').contents().each(function () {
-    const el = $(this);
-    if (this.type === 'text') {
-      result += el.text();
-    } else if (this.type === 'tag' && this.name === 'ruby') {
-      const base = el.find('rb').text() || el.contents().first().text();
-      const reading = el.find('rt').text();
-      result += reading ? `${base}(${reading})` : base;
-    } else {
-      result += el.text();
-    }
-  });
-
-  return result;
+  return JSON.parse(jsonMatch[0]) as GeneratedContent[];
 }
 
 export async function crawlAndSave(limit = 5): Promise<number> {
@@ -69,24 +58,18 @@ export async function crawlAndSave(limit = 5): Promise<number> {
 
   for (const article of articles.slice(0, limit)) {
     try {
-      const { body, bodyWithRuby } = await fetchArticleBody(article.news_id);
-      if (!body) continue;
-
-      const reading = extractReadingFromRuby(bodyWithRuby);
-
       await db.insert(contents).values({
-        type: 'news',
-        jlptLevel: 'N3', // NHK Easy는 기본 N3
-        title: article.title.replace(/<[^>]*>/g, ''),
-        bodyJa: body,
-        bodyReading: reading,
-        source: 'nhk_easy',
-        sourceUrl: `${NHK_EASY_ARTICLE}/${article.news_id}/${article.news_id}.html`,
-      }).onConflictDoNothing();
-
+        type: article.type || 'news',
+        jlptLevel: 'N3',
+        title: article.title,
+        bodyJa: article.bodyJa,
+        bodyReading: article.bodyReading,
+        bodyKo: article.bodyKo,
+        source: 'generated',
+      });
       saved++;
     } catch (err) {
-      console.error(`Failed to crawl article ${article.news_id}:`, err);
+      console.error(`Failed to save content:`, err);
     }
   }
 
