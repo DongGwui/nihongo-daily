@@ -2,6 +2,7 @@ import { db } from '../../db/client.js';
 import { contents } from '../../db/schema.js';
 import { config } from '../../lib/config.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { eq } from 'drizzle-orm';
 
 /**
  * NHK Easy News 크롤러 + Gemini fallback 하이브리드 방식
@@ -297,7 +298,19 @@ export async function crawlAndSave(limit = 5): Promise<number> {
   const articles = await fetchArticleList();
   let saved = 0;
 
+  // 기존 콘텐츠의 title 목록으로 중복 체크
+  const existing = await db
+    .select({ title: contents.title })
+    .from(contents)
+    .where(eq(contents.source, articles[0]?.source ?? 'nhk_easy'));
+  const existingTitles = new Set(existing.map((e) => e.title));
+
   for (const article of articles.slice(0, limit)) {
+    if (existingTitles.has(article.title)) {
+      console.log(`[Skip] 이미 존재: ${article.title}`);
+      continue;
+    }
+
     try {
       await db.insert(contents).values({
         type: 'news',
@@ -310,6 +323,7 @@ export async function crawlAndSave(limit = 5): Promise<number> {
         sourceUrl: article.sourceUrl,
       });
       saved++;
+      existingTitles.add(article.title);
     } catch (err) {
       console.error(`Failed to save content:`, err);
     }
