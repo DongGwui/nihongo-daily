@@ -57,8 +57,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nihongo-web.rule=Host(`nihongo.dltmxm.link`)"
-      - "traefik.http.routers.nihongo-web.entrypoints=websecure"
-      - "traefik.http.routers.nihongo-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.nihongo-web.entrypoints=web"
       - "traefik.http.services.nihongo-web.loadbalancer.server.port=3000"
 
 networks:
