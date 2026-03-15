@@ -11,6 +11,7 @@ import { hintHandler } from './commands/hint.js';
 import { skipHandler } from './commands/skip.js';
 import { explainHandler } from './commands/explain.js';
 import { webHandler } from './commands/web.js';
+import { textAnswerHandler } from './handlers/text-answer.js';
 import { quizAnswerCallback } from './callbacks/quiz-answer.js';
 import { reviewRatingCallback, reviewFlipCallback } from './callbacks/review-rating.js';
 import { dailyActionCallback } from './callbacks/daily-action.js';
@@ -43,6 +44,9 @@ export function createBot(token: string): Bot<BotContext> {
   bot.callbackQuery(/^review_rate:/, reviewRatingCallback);
   bot.callbackQuery(/^review_flip:/, reviewFlipCallback);
   bot.callbackQuery(/^daily_action:/, dailyActionCallback);
+
+  // 서술형 퀴즈 텍스트 답변
+  bot.on('message:text', textAnswerHandler);
 
   // 에러 핸들링
   bot.catch((err) => {
