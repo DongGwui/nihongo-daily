@@ -1,7 +1,11 @@
 node_modules/
 dist/
 .env
+.env.local
+web/.env.local
 *.log
+docker-compose.yml
+docker-compose.dev.yml
 .DS_Store
 .idea/
 .bkit/
