@@ -42,7 +42,7 @@ export async function getWeeklyStats(userId: number): Promise<WeeklyStats> {
     });
   }
 
-  const totalQuizzes = days.reduce((sum, d) => sum + d.quizzes, 0);
+  const totalQuizzes = days.reduce((sum, d) => sum + d.total, 0);
   const totalCorrect = days.reduce((sum, d) => sum + d.correct, 0);
 
   return {
@@ -54,21 +54,21 @@ export async function getWeeklyStats(userId: number): Promise<WeeklyStats> {
 }
 
 export function formatStatsMessage(stats: WeeklyStats): string {
-  const maxQuizzes = Math.max(...stats.days.map(d => d.quizzes), 1);
+  // 실제 문제 수(total) 기준으로 바 차트 표시, 최소 기준 10문제
+  const maxTotal = Math.max(...stats.days.map(d => d.total), 10);
   const barWidth = 8;
 
   let msg = '📊 이번 주 학습 현황\n\n';
 
   for (const day of stats.days) {
     const dayLabel = dayjs(day.date).format('MM/DD');
-    const filled = Math.round((day.quizzes / maxQuizzes) * barWidth);
+    const filled = Math.round((day.total / maxTotal) * barWidth);
     const bar = '█'.repeat(filled) + '░'.repeat(barWidth - filled);
-    msg += `${dayLabel} ${bar} ${day.quizzes}문제\n`;
+    msg += `${dayLabel} ${bar} ${day.total}문제\n`;
   }
 
-  const totalTotal = stats.days.reduce((sum, d) => sum + d.total, 0);
-  const accuracy = totalTotal > 0
-    ? Math.round((stats.totalCorrect / totalTotal) * 100)
+  const accuracy = stats.totalQuizzes > 0
+    ? Math.round((stats.totalCorrect / stats.totalQuizzes) * 100)
     : 0;
 
   msg += `\n🔥 연속 학습: ${stats.streak}일`;
