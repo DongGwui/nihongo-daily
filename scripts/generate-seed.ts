@@ -1,16 +1,16 @@
 /**
  * JLPT 전 레벨 seed.sql 생성기
  *
- * 각 단어별로:
- * 1. contents 테이블 INSERT (vocabulary 타입)
- * 2. vocabularies 테이블 INSERT
- * 3. quizzes 테이블 INSERT x2 (vocabulary + reading 퀴즈)
+ * 콘텐츠 타입별:
+ * - vocabulary: contents + vocabularies + quizzes x2
+ * - grammar: contents + quizzes x1
+ * - sentence: contents + quizzes x1
  *
  * 사용법: npx tsx scripts/generate-seed.ts
  * 출력: seed.sql
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 interface VocabEntry {
@@ -18,6 +18,19 @@ interface VocabEntry {
   reading: string;
   meaning_ko: string;
   pos: string;
+}
+
+interface GrammarEntry {
+  pattern: string;
+  meaning_ko: string;
+  example: string;
+  example_ko: string;
+}
+
+interface SentenceEntry {
+  ja: string;
+  ko: string;
+  reading?: string;
 }
 
 const LEVELS = ['N5', 'N4', 'N3', 'N2', 'N1'] as const;
@@ -129,9 +142,103 @@ function generateSQL(): string {
     lines.push('');
   }
 
+  // ====== Grammar ======
+  let totalGrammar = 0;
+
+  for (const level of LEVELS) {
+    const filePath = join(DATA_DIR, `jlpt-grammar-${level.toLowerCase()}.json`);
+    if (!existsSync(filePath)) continue;
+
+    let entries: GrammarEntry[];
+    try {
+      entries = JSON.parse(readFileSync(filePath, 'utf-8'));
+    } catch {
+      continue;
+    }
+
+    console.log(`[${level}] ${entries.length}개 문법 처리 중...`);
+
+    const allMeanings = entries.map((e) => e.meaning_ko);
+
+    lines.push(`-- ====== ${level} Grammar (${entries.length}개) ======`);
+    lines.push('');
+
+    for (const entry of entries) {
+      const pattern = escapeSQL(entry.pattern);
+      const meaningKo = escapeSQL(entry.meaning_ko);
+      const example = escapeSQL(entry.example);
+      const exampleKo = escapeSQL(entry.example_ko);
+
+      // contents INSERT
+      lines.push(
+        `INSERT INTO contents (type, jlpt_level, title, body_ja, body_ko, source) ` +
+        `VALUES ('grammar', '${level}', '${pattern}', '${pattern}: ${example}', '${meaningKo}: ${exampleKo}', 'manual');`,
+      );
+
+      // grammar quiz (뜻 맞추기)
+      const wrongMeanings = generateWrongOptions(entry.meaning_ko, allMeanings, 3);
+      const options = shuffle([entry.meaning_ko, ...wrongMeanings]);
+      lines.push(
+        `INSERT INTO quizzes (content_id, type, question, options, answer, explanation, jlpt_level, difficulty) ` +
+        `VALUES (currval('contents_id_seq'), 'grammar', '「${pattern}」의 뜻은?', ` +
+        `'${escapeSQL(JSON.stringify(options))}', '${meaningKo}', ` +
+        `'${pattern} = ${meaningKo} / 예: ${example} (${exampleKo})', '${level}', 1);`,
+      );
+
+      totalGrammar++;
+      totalQuizzes++;
+    }
+
+    lines.push('');
+  }
+
+  // ====== Sentences ======
+  let totalSentences = 0;
+
+  for (const level of LEVELS) {
+    const filePath = join(DATA_DIR, `jlpt-sentences-${level.toLowerCase()}.json`);
+    if (!existsSync(filePath)) continue;
+
+    let entries: SentenceEntry[];
+    try {
+      entries = JSON.parse(readFileSync(filePath, 'utf-8'));
+    } catch {
+      continue;
+    }
+
+    console.log(`[${level}] ${entries.length}개 예문 처리 중...`);
+
+    lines.push(`-- ====== ${level} Sentences (${entries.length}개) ======`);
+    lines.push('');
+
+    for (const entry of entries) {
+      const ja = escapeSQL(entry.ja);
+      const ko = escapeSQL(entry.ko);
+      const reading = entry.reading ? escapeSQL(entry.reading) : null;
+
+      // contents INSERT
+      lines.push(
+        `INSERT INTO contents (type, jlpt_level, body_ja, body_reading, body_ko, source) ` +
+        `VALUES ('sentence', '${level}', '${ja}', ${reading ? `'${reading}'` : 'NULL'}, '${ko}', 'manual');`,
+      );
+
+      // translate quiz (번역 맞추기)
+      lines.push(
+        `INSERT INTO quizzes (content_id, type, question, answer, explanation, jlpt_level, difficulty) ` +
+        `VALUES (currval('contents_id_seq'), 'translate', '다음 문장을 번역하세요: 「${ja}」', '${ko}', ` +
+        `'${ja} → ${ko}', '${level}', 1);`,
+      );
+
+      totalSentences++;
+      totalQuizzes++;
+    }
+
+    lines.push('');
+  }
+
   lines.push('COMMIT;');
   lines.push('');
-  lines.push(`-- 통계: ${totalWords}개 단어, ${totalQuizzes}개 퀴즈`);
+  lines.push(`-- 통계: ${totalWords}개 단어, ${totalGrammar}개 문법, ${totalSentences}개 예문, ${totalQuizzes}개 퀴즈`);
 
   return lines.join('\n');
 }

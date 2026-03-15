@@ -3,6 +3,7 @@ import { contents } from '../../db/schema.js';
 import { config } from '../../lib/config.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { eq } from 'drizzle-orm';
+import { generateAndSaveQuizzes } from '../generators/quiz-generator.js';
 
 /**
  * NHK Easy News 크롤러 + Gemini fallback 하이브리드 방식
@@ -299,7 +300,7 @@ export async function crawlAndSave(limit = 5): Promise<number> {
     }
 
     try {
-      await db.insert(contents).values({
+      const [inserted] = await db.insert(contents).values({
         type: 'news',
         jlptLevel: 'N3',
         title: article.title,
@@ -308,9 +309,19 @@ export async function crawlAndSave(limit = 5): Promise<number> {
         bodyKo: article.bodyKo,
         source: article.source,
         sourceUrl: article.sourceUrl,
-      });
+      }).returning({ id: contents.id });
       saved++;
       existingTitles.add(article.title);
+
+      // 기사 저장 직후 Gemini로 퀴즈 자동 생성
+      if (inserted?.id) {
+        try {
+          const quizCount = await generateAndSaveQuizzes(inserted.id);
+          console.log(`[NHK] 기사 "${article.title}" 퀴즈 ${quizCount}개 생성`);
+        } catch (qErr) {
+          console.warn(`[NHK] 퀴즈 생성 실패 (${article.title}):`, (qErr as Error).message);
+        }
+      }
     } catch (err) {
       console.error(`Failed to save content:`, err);
     }

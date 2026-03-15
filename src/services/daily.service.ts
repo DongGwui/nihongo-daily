@@ -99,12 +99,31 @@ export async function buildDailyMessage(userId: number, level: JlptLevel) {
 
   let msg = `📚 오늘의 일본어 (${level} 레벨)\n\n`;
 
-  if (content.title) {
-    msg += `📰 ${content.title}\n`;
-  }
-  msg += `「${content.bodyJa}」\n`;
-  if (content.bodyKo) {
-    msg += `(${content.bodyKo})\n`;
+  if (content.type === 'news') {
+    // NHK 기사: 제목 + 후리가나 본문 + 원문 링크
+    if (content.title) {
+      msg += `📰 ${content.title}\n\n`;
+    }
+    // 후리가나 읽기가 있으면 우선 표시, 없으면 원문
+    const body = content.bodyReading || content.bodyJa;
+    // 긴 기사는 500자로 자르기
+    const truncated = body.length > 500 ? body.slice(0, 500) + '...' : body;
+    msg += `${truncated}\n`;
+    if (content.bodyKo) {
+      msg += `\n🇰🇷 번역\n${content.bodyKo}\n`;
+    }
+    if (content.sourceUrl) {
+      msg += `\n🔗 원문: ${content.sourceUrl}\n`;
+    }
+  } else {
+    // vocabulary / grammar / sentence 타입
+    if (content.title) {
+      msg += `📰 ${content.title}\n`;
+    }
+    msg += `「${content.bodyJa}」\n`;
+    if (content.bodyKo) {
+      msg += `(${content.bodyKo})\n`;
+    }
   }
 
   if (vocab.length > 0) {
@@ -114,7 +133,7 @@ export async function buildDailyMessage(userId: number, level: JlptLevel) {
     }
   }
 
-  return { message: msg, contentId: content.id };
+  return { message: msg, contentId: content.id, contentType: content.type };
 }
 
 /**
