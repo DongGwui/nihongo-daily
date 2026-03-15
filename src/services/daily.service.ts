@@ -5,6 +5,11 @@ import { selectDailyContent } from './content.service.js';
 import { getQuizzesByContent } from './quiz.service.js';
 import type { JlptLevel } from '../db/schema.js';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc.js';
+import timezone from 'dayjs/plugin/timezone.js';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function updateDailyQuizStats(userId: number, totalQuizzes: number, correctCount: number) {
   const today = dayjs().format('YYYY-MM-DD');
@@ -63,16 +68,22 @@ export async function updateDailyQuizStats(userId: number, totalQuizzes: number,
   }
 }
 
-export async function getUsersForTime(time: string) {
-  return db
+/**
+ * 현재 시각 기준으로 데일리 전송 대상 사용자 조회
+ * 각 사용자의 timezone에 맞춰 현재 시각을 계산하여 daily_time과 비교
+ */
+export async function getUsersForTime() {
+  const activeUsers = await db
     .select()
     .from(users)
-    .where(
-      and(
-        eq(users.dailyTime, time),
-        eq(users.isActive, true)
-      )
-    );
+    .where(eq(users.isActive, true));
+
+  return activeUsers.filter((user) => {
+    const tz = user.timezone || 'Asia/Seoul';
+    const userNow = dayjs().tz(tz);
+    const currentTime = userNow.format('HH:mm');
+    return user.dailyTime === currentTime;
+  });
 }
 
 export async function buildDailyMessage(userId: number, level: JlptLevel) {
@@ -104,6 +115,26 @@ export async function buildDailyMessage(userId: number, level: JlptLevel) {
   }
 
   return { message: msg, contentId: content.id };
+}
+
+/**
+ * 자정 스트릭 리셋: 어제 학습하지 않은 사용자의 streak을 0으로 초기화
+ */
+export async function resetInactiveStreaks() {
+  const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+
+  const result = await db
+    .update(users)
+    .set({ streakCount: 0, updatedAt: new Date() })
+    .where(
+      and(
+        eq(users.isActive, true),
+        sql`${users.lastStudyDate} IS NOT NULL AND ${users.lastStudyDate} < ${yesterday}`,
+        sql`${users.streakCount} > 0`,
+      ),
+    );
+
+  return result;
 }
 
 export async function recordDailyLog(userId: number, contentId: number) {

@@ -1,71 +1,82 @@
 import { describe, it, expect } from 'vitest';
 import { createEmptyCard, fsrs, generatorParameters, Rating } from 'ts-fsrs';
+import { scheduleReview, getEmptyCardDefaults } from '../../src/lib/fsrs.js';
 
-describe('FSRS Algorithm', () => {
-  const f = fsrs(generatorParameters());
+describe('FSRS Module', () => {
+  describe('scheduleReview', () => {
+    it('should return valid result for Good rating on new card', () => {
+      const defaults = getEmptyCardDefaults();
+      const result = scheduleReview(defaults, Rating.Good);
 
-  it('should create an empty card with default values', () => {
-    const card = createEmptyCard();
-    expect(card.stability).toBe(0);
-    expect(card.difficulty).toBe(0);
-    expect(card.reps).toBe(0);
-    expect(card.lapses).toBe(0);
+      expect(result.stability).toBeGreaterThan(0);
+      expect(result.reps).toBe(1);
+      expect(result.dueDate.getTime()).toBeGreaterThan(Date.now());
+      expect(result.state).toBe('learning');
+    });
+
+    it('should return shorter interval for Again vs Good', () => {
+      const defaults = getEmptyCardDefaults();
+      const again = scheduleReview(defaults, Rating.Again);
+      const good = scheduleReview(defaults, Rating.Good);
+
+      expect(again.dueDate.getTime()).toBeLessThan(good.dueDate.getTime());
+    });
+
+    it('should map state correctly', () => {
+      const defaults = getEmptyCardDefaults();
+      const result = scheduleReview(defaults, Rating.Again);
+      expect(['new', 'learning', 'review', 'relearning']).toContain(result.state);
+    });
+
+    it('should increase stability with repeated Good ratings (via ts-fsrs direct)', () => {
+      // scheduleReview always uses new Date(), so we test via ts-fsrs directly
+      // to simulate time-advanced reviews
+      const f = fsrs(generatorParameters());
+      let card = createEmptyCard();
+      const now = new Date();
+
+      const s1 = f.repeat(card, now);
+      card = s1[Rating.Good].card;
+      const stability1 = card.stability;
+
+      const s2 = f.repeat(card, card.due);
+      card = s2[Rating.Good].card;
+
+      expect(card.stability).toBeGreaterThan(stability1);
+    });
   });
 
-  it('should schedule next review after Good rating', () => {
-    const card = createEmptyCard();
-    const now = new Date();
-    const scheduling = f.repeat(card, now);
-    const result = scheduling[Rating.Good];
-
-    expect(result.card.stability).toBeGreaterThan(0);
-    expect(result.card.reps).toBe(1);
-    expect(result.card.due.getTime()).toBeGreaterThan(now.getTime());
+  describe('getEmptyCardDefaults', () => {
+    it('should return zeroed defaults', () => {
+      const defaults = getEmptyCardDefaults();
+      expect(defaults.stability).toBe(0);
+      expect(defaults.difficulty).toBe(0);
+      expect(defaults.reps).toBe(0);
+      expect(defaults.lapses).toBe(0);
+    });
   });
 
-  it('should have shorter interval for Again vs Good', () => {
-    const card = createEmptyCard();
-    const now = new Date();
-    const scheduling = f.repeat(card, now);
+  describe('ts-fsrs direct (regression)', () => {
+    const f = fsrs(generatorParameters());
 
-    const againDue = scheduling[Rating.Again].card.due;
-    const goodDue = scheduling[Rating.Good].card.due;
+    it('should create an empty card with default values', () => {
+      const card = createEmptyCard();
+      expect(card.stability).toBe(0);
+      expect(card.difficulty).toBe(0);
+    });
 
-    expect(againDue.getTime()).toBeLessThan(goodDue.getTime());
-  });
+    it('should handle Again rating after Good', () => {
+      let card = createEmptyCard();
+      const now = new Date();
 
-  it('should increase stability with repeated Good ratings', () => {
-    let card = createEmptyCard();
-    const now = new Date();
+      const s1 = f.repeat(card, now);
+      card = s1[Rating.Good].card;
 
-    // First review
-    const s1 = f.repeat(card, now);
-    card = s1[Rating.Good].card;
-    const stability1 = card.stability;
+      const s2 = f.repeat(card, card.due);
+      card = s2[Rating.Again].card;
 
-    // Second review
-    const s2 = f.repeat(card, card.due);
-    card = s2[Rating.Good].card;
-    const stability2 = card.stability;
-
-    expect(stability2).toBeGreaterThan(stability1);
-  });
-
-  it('should handle Again rating by resetting to short interval', () => {
-    let card = createEmptyCard();
-    const now = new Date();
-
-    // First: Good
-    const s1 = f.repeat(card, now);
-    card = s1[Rating.Good].card;
-    const goodDue = card.due;
-
-    // Second: Again
-    const s2 = f.repeat(card, card.due);
-    card = s2[Rating.Again].card;
-
-    // Again should reset to a shorter interval than the previous due
-    expect(card.reps).toBe(2);
-    expect(card.stability).toBeGreaterThan(0);
+      expect(card.reps).toBe(2);
+      expect(card.stability).toBeGreaterThan(0);
+    });
   });
 });

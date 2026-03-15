@@ -1,10 +1,9 @@
 import { eq, and, lte, sql } from 'drizzle-orm';
-import { createEmptyCard, fsrs, generatorParameters, type Grade } from 'ts-fsrs';
+import type { Grade } from 'ts-fsrs';
 import { db } from '../db/client.js';
-import { reviewCards, quizzes } from '../db/schema.js';
+import { reviewCards, quizzes, contents, vocabularies } from '../db/schema.js';
 import type { CardType } from '../db/schema.js';
-
-const f = fsrs(generatorParameters());
+import { scheduleReview } from '../lib/fsrs.js';
 
 export async function getDueCards(userId: number, limit = 10) {
   return db
@@ -29,34 +28,30 @@ export async function reviewCard(cardId: number, grade: Grade) {
 
   if (!card) return null;
 
-  const fsrsCard = createEmptyCard();
-  fsrsCard.stability = card.stability;
-  fsrsCard.difficulty = card.difficulty;
-  fsrsCard.reps = card.reps;
-  fsrsCard.lapses = card.lapses;
-
-  const now = new Date();
-  const scheduling = f.repeat(fsrsCard, now);
-  const result = scheduling[grade];
-  const updated = result.card;
+  const result = scheduleReview(
+    {
+      stability: card.stability,
+      difficulty: card.difficulty,
+      reps: card.reps,
+      lapses: card.lapses,
+    },
+    grade,
+  );
 
   await db
     .update(reviewCards)
     .set({
-      stability: updated.stability,
-      difficulty: updated.difficulty,
-      dueDate: updated.due,
-      lastReview: now,
-      reps: updated.reps,
-      lapses: updated.lapses,
-      state: updated.state === 0 ? 'new'
-        : updated.state === 1 ? 'learning'
-        : updated.state === 2 ? 'review'
-        : 'relearning',
+      stability: result.stability,
+      difficulty: result.difficulty,
+      dueDate: result.dueDate,
+      lastReview: new Date(),
+      reps: result.reps,
+      lapses: result.lapses,
+      state: result.state,
     })
     .where(eq(reviewCards.id, cardId));
 
-  return { nextDue: updated.due, interval: result.log.elapsed_days };
+  return { nextDue: result.dueDate, interval: result.interval };
 }
 
 export async function createReviewCard(
@@ -85,12 +80,13 @@ export async function getCardById(cardId: number) {
   return card ?? null;
 }
 
-export async function getCardContent(cardId: number, cardType: string) {
+export async function getCardContent(cardRefId: number, cardType: string) {
   if (cardType === 'vocabulary') {
+    // 퀴즈 기반 어휘 카드
     const [quiz] = await db
       .select()
       .from(quizzes)
-      .where(eq(quizzes.id, cardId))
+      .where(eq(quizzes.id, cardRefId))
       .limit(1);
 
     if (quiz) {
@@ -101,7 +97,29 @@ export async function getCardContent(cardId: number, cardType: string) {
     }
   }
 
-  return { front: `카드 #${cardId}`, back: `카드 #${cardId}` };
+  if (cardType === 'grammar' || cardType === 'sentence') {
+    // 콘텐츠 기반 문법/문장 카드
+    const [content] = await db
+      .select()
+      .from(contents)
+      .where(eq(contents.id, cardRefId))
+      .limit(1);
+
+    if (content) {
+      const front = cardType === 'grammar'
+        ? `📖 ${content.title ?? '문법'}\n${content.bodyJa}`
+        : `📝 ${content.bodyJa}`;
+
+      const back = [
+        content.bodyReading ? `読み: ${content.bodyReading}` : null,
+        content.bodyKo ? `뜻: ${content.bodyKo}` : null,
+      ].filter(Boolean).join('\n') || content.bodyJa;
+
+      return { front, back };
+    }
+  }
+
+  return { front: `카드 #${cardRefId}`, back: `카드 #${cardRefId}` };
 }
 
 export async function getReviewStats(userId: number) {
