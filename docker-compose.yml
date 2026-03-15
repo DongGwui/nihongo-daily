@@ -56,6 +56,7 @@ services:
       - proxy
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
       - "traefik.http.routers.nihongo-web.rule=Host(`nihongo.dltmxm.link`)"
       - "traefik.http.routers.nihongo-web.entrypoints=web"
       - "traefik.http.services.nihongo-web.loadbalancer.server.port=3000"
