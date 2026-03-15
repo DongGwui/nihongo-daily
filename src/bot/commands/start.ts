@@ -53,10 +53,14 @@ export async function setLevelCallback(ctx: BotContext) {
   ctx.session.jlptLevel = level;
 
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(
-    `✅ ${level} 레벨로 설정했습니다!\n\n` +
-    `매일 학습 콘텐츠를 받을 시간을 설정해주세요.\n` +
-    `예: /time 08:00\n\n` +
-    `(기본값: 매일 오전 08:00)`
-  );
+  try {
+    await ctx.editMessageText(
+      `✅ ${level} 레벨로 설정했습니다!\n\n` +
+      `매일 학습 콘텐츠를 받을 시간을 설정해주세요.\n` +
+      `예: /time 08:00\n\n` +
+      `(기본값: 매일 오전 08:00)`
+    );
+  } catch {
+    // "message is not modified" 에러 무시 (버튼 중복 클릭 시)
+  }
 }

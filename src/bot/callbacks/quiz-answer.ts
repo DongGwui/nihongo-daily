@@ -30,20 +30,24 @@ export async function quizAnswerCallback(ctx: BotContext) {
 
   ctx.session.lastQuizId = quizId;
 
-  if (isCorrect) {
-    if (ctx.session.activeQuiz) ctx.session.activeQuiz.correctCount++;
-    await ctx.editMessageText(
-      `✅ 정답! 「${quiz.answer}」\n` +
-      (quiz.explanation ? `\n💡 ${quiz.explanation}` : '')
-    );
-  } else {
-    // 오답 → 복습 카드 자동 생성
-    await createReviewCard(ctx.session.userId, 'vocabulary', quizId);
-    await ctx.editMessageText(
-      `❌ 오답! 정답은 「${quiz.answer}」\n` +
-      (quiz.explanation ? `\n💡 ${quiz.explanation}` : '') +
-      `\n\n📝 복습 카드에 추가되었습니다.`
-    );
+  try {
+    if (isCorrect) {
+      if (ctx.session.activeQuiz) ctx.session.activeQuiz.correctCount++;
+      await ctx.editMessageText(
+        `✅ 정답! 「${quiz.answer}」\n` +
+        (quiz.explanation ? `\n💡 ${quiz.explanation}` : '')
+      );
+    } else {
+      // 오답 → 복습 카드 자동 생성
+      await createReviewCard(ctx.session.userId, 'vocabulary', quizId);
+      await ctx.editMessageText(
+        `❌ 오답! 정답은 「${quiz.answer}」\n` +
+        (quiz.explanation ? `\n💡 ${quiz.explanation}` : '') +
+        `\n\n📝 복습 카드에 추가되었습니다.`
+      );
+    }
+  } catch {
+    // "message is not modified" 에러 무시
   }
 
   // 다음 퀴즈

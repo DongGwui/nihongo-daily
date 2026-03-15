@@ -30,24 +30,28 @@ export async function reviewRatingCallback(ctx: BotContext) {
 
   ar.currentIndex++;
 
-  if (ar.currentIndex >= ar.cardIds.length) {
-    const elapsed = Math.round((Date.now() - ar.startedAt) / 1000);
-    await ctx.editMessageText(
-      `✨ 복습 완료! ${ar.cardIds.length}장\n` +
-      `⏱️ 소요 시간: ${elapsed}초`
-    );
-    ctx.session.activeReview = null;
-    return;
-  }
+  try {
+    if (ar.currentIndex >= ar.cardIds.length) {
+      const elapsed = Math.round((Date.now() - ar.startedAt) / 1000);
+      await ctx.editMessageText(
+        `✨ 복습 완료! ${ar.cardIds.length}장\n` +
+        `⏱️ 소요 시간: ${elapsed}초`
+      );
+      ctx.session.activeReview = null;
+      return;
+    }
 
-  // 다음 카드
-  const nextCardId = ar.cardIds[ar.currentIndex];
-  const [nextCard] = await getDueCards(ctx.session.userId, 1);
-  if (nextCard) {
-    const msg = formatReviewCard(nextCard, 'front');
-    const keyboard = new InlineKeyboard()
-      .text('뒤집기 🔄', `review_flip:${nextCard.id}`);
-    await ctx.editMessageText(msg, { reply_markup: keyboard });
+    // 다음 카드
+    const nextCardId = ar.cardIds[ar.currentIndex];
+    const [nextCard] = await getDueCards(ctx.session.userId, 1);
+    if (nextCard) {
+      const msg = formatReviewCard(nextCard, 'front');
+      const keyboard = new InlineKeyboard()
+        .text('뒤집기 🔄', `review_flip:${nextCard.id}`);
+      await ctx.editMessageText(msg, { reply_markup: keyboard });
+    }
+  } catch {
+    // "message is not modified" 에러 무시
   }
 }
 
@@ -58,14 +62,18 @@ export async function reviewFlipCallback(ctx: BotContext) {
   const cardId = parseInt(data.split(':')[1], 10);
   await ctx.answerCallbackQuery();
 
-  const keyboard = new InlineKeyboard()
-    .text('Again', `review_rate:${cardId}:1`)
-    .text('Hard', `review_rate:${cardId}:2`)
-    .text('Good', `review_rate:${cardId}:3`)
-    .text('Easy', `review_rate:${cardId}:4`);
+  try {
+    const keyboard = new InlineKeyboard()
+      .text('Again', `review_rate:${cardId}:1`)
+      .text('Hard', `review_rate:${cardId}:2`)
+      .text('Good', `review_rate:${cardId}:3`)
+      .text('Easy', `review_rate:${cardId}:4`);
 
-  await ctx.editMessageText(
-    `카드를 얼마나 잘 기억하셨나요?`,
-    { reply_markup: keyboard }
-  );
+    await ctx.editMessageText(
+      `카드를 얼마나 잘 기억하셨나요?`,
+      { reply_markup: keyboard }
+    );
+  } catch {
+    // "message is not modified" 에러 무시
+  }
 }
