@@ -4,15 +4,15 @@ import { z } from 'zod';
 
 const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
 
-const quizSchema = z.array(z.object({
+const quizSchema = z.object({
   type: z.enum(['reading', 'vocabulary', 'grammar', 'translate']),
   question: z.string(),
   options: z.array(z.string()).optional(),
   answer: z.string(),
-  explanation: z.string(),
-}));
+  explanation: z.string().optional().default(''),
+});
 
-export type GeneratedQuiz = z.infer<typeof quizSchema>[number];
+export type GeneratedQuiz = z.infer<typeof quizSchema>;
 
 export async function generateQuizzes(content: string, level: string): Promise<GeneratedQuiz[]> {
   if (!config.GEMINI_API_KEY) {
@@ -33,6 +33,13 @@ export async function generateQuizzes(content: string, level: string): Promise<G
 3. grammar: 문법 빈칸 퀴즈 (4지선다, options 포함)
 4. translate: 번역 퀴즈 (정답 텍스트, options 없음)
 
+각 퀴즈는 반드시 다음 필드를 포함해야 합니다:
+- type: 퀴즈 유형
+- question: 문제
+- options: 선택지 배열 (translate 제외)
+- answer: 정답 문자열
+- explanation: 해설 문자열
+
 각 퀴즈의 오답은 학습자가 흔히 혼동하는 것으로 구성하세요.
 반드시 JSON 배열로만 응답하세요. 다른 텍스트는 포함하지 마세요.`;
 
@@ -43,6 +50,17 @@ export async function generateQuizzes(content: string, level: string): Promise<G
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) return [];
 
-  const parsed = JSON.parse(jsonMatch[0]);
-  return quizSchema.parse(parsed);
+  const parsed = JSON.parse(jsonMatch[0]) as unknown[];
+  const quizzes: GeneratedQuiz[] = [];
+
+  for (const item of parsed) {
+    const result = quizSchema.safeParse(item);
+    if (result.success) {
+      quizzes.push(result.data);
+    } else {
+      console.warn('Invalid quiz item skipped:', result.error.issues[0]?.message);
+    }
+  }
+
+  return quizzes;
 }
