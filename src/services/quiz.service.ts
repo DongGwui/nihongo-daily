@@ -1,7 +1,9 @@
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { quizzes, userQuizResults } from '../db/schema.js';
-import type { JlptLevel } from '../db/schema.js';
+import type { JlptLevel, QuizType } from '../db/schema.js';
+
+const QUIZ_TYPES: QuizType[] = ['reading', 'vocabulary', 'grammar', 'translate', 'comprehension', 'composition'];
 
 export async function getQuizzesByContent(contentId: number) {
   return db
@@ -10,13 +12,38 @@ export async function getQuizzesByContent(contentId: number) {
     .where(eq(quizzes.contentId, contentId));
 }
 
-export async function getRandomQuizzes(level: JlptLevel, count = 4) {
-  return db
-    .select()
-    .from(quizzes)
-    .where(eq(quizzes.jlptLevel, level))
-    .orderBy(sql`RANDOM()`)
-    .limit(count);
+export async function getRandomQuizzes(level: JlptLevel, count = 6) {
+  const result = [];
+
+  // 각 유형별 1개씩 출제
+  for (const type of QUIZ_TYPES) {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(and(eq(quizzes.jlptLevel, level), eq(quizzes.type, type)))
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
+    if (quiz) result.push(quiz);
+  }
+
+  // 유형별 퀴즈가 부족하면 랜덤으로 채우기
+  if (result.length < count) {
+    const existingIds = result.map((q) => q.id);
+    const more = await db
+      .select()
+      .from(quizzes)
+      .where(and(
+        eq(quizzes.jlptLevel, level),
+        existingIds.length > 0
+          ? sql`${quizzes.id} NOT IN (${sql.join(existingIds.map(id => sql`${id}`), sql`, `)})`
+          : undefined,
+      ))
+      .orderBy(sql`RANDOM()`)
+      .limit(count - result.length);
+    result.push(...more);
+  }
+
+  return result;
 }
 
 export async function getQuizById(quizId: number) {

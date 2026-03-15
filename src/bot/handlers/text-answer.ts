@@ -3,6 +3,11 @@ import { getQuizById, saveQuizResult } from '../../services/quiz.service.js';
 import { createReviewCard } from '../../services/review.service.js';
 import { sendNextQuizOrSummary } from '../commands/quiz.js';
 
+// 공백, 구두점, 마침표 등을 제거하여 비교
+function normalize(s: string): string {
+  return s.replace(/[\s。、．，！？!?,.\-~～「」『』（）()・]/g, '').toLowerCase();
+}
+
 export async function textAnswerHandler(ctx: BotContext) {
   const aq = ctx.session.activeQuiz;
   if (!aq || !ctx.session.userId || !ctx.message?.text) return;
@@ -15,7 +20,7 @@ export async function textAnswerHandler(ctx: BotContext) {
   if (quiz.options && (quiz.options as string[]).length > 0) return;
 
   const userAnswer = ctx.message.text.trim();
-  const isCorrect = userAnswer === quiz.answer;
+  const isCorrect = normalize(userAnswer) === normalize(quiz.answer);
 
   const elapsed = Date.now() - aq.startedAt;
   await saveQuizResult(ctx.session.userId, quizId, userAnswer, isCorrect, elapsed);

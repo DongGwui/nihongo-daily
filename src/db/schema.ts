@@ -8,7 +8,7 @@ import {
 export type JlptLevel = 'N5' | 'N4' | 'N3' | 'N2' | 'N1';
 export type ContentType = 'news' | 'sentence' | 'grammar' | 'vocabulary';
 export type ContentSource = 'nhk_easy' | 'tatoeba' | 'jmdict' | 'generated';
-export type QuizType = 'reading' | 'vocabulary' | 'grammar' | 'translate' | 'comprehension';
+export type QuizType = 'reading' | 'vocabulary' | 'grammar' | 'translate' | 'comprehension' | 'composition';
 export type CardType = 'vocabulary' | 'grammar' | 'sentence';
 export type CardState = 'new' | 'learning' | 'review' | 'relearning';
 

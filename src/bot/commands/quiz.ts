@@ -11,7 +11,7 @@ export async function quizHandler(ctx: BotContext) {
   }
 
   const level = ctx.session.jlptLevel as JlptLevel;
-  const quizList = await getRandomQuizzes(level, 4);
+  const quizList = await getRandomQuizzes(level);
 
   if (quizList.length === 0) {
     await ctx.reply('😢 아직 퀴즈가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
