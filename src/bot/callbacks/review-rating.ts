@@ -1,15 +1,8 @@
 import { InlineKeyboard } from 'grammy';
 import type { BotContext } from '../bot.js';
-import { reviewCard, getDueCards } from '../../services/review.service.js';
+import { reviewCard, getDueCards, getCardById } from '../../services/review.service.js';
 import { formatReviewCard } from '../messages/review.js';
 import type { Grade } from 'ts-fsrs';
-
-const GRADE_LABELS: Record<string, string> = {
-  '1': 'Again',
-  '2': 'Hard',
-  '3': 'Good',
-  '4': 'Easy',
-};
 
 export async function reviewRatingCallback(ctx: BotContext) {
   const data = ctx.callbackQuery?.data;
@@ -45,7 +38,7 @@ export async function reviewRatingCallback(ctx: BotContext) {
     const nextCardId = ar.cardIds[ar.currentIndex];
     const [nextCard] = await getDueCards(ctx.session.userId, 1);
     if (nextCard) {
-      const msg = formatReviewCard(nextCard, 'front');
+      const msg = await formatReviewCard(nextCard, 'front');
       const keyboard = new InlineKeyboard()
         .text('뒤집기 🔄', `review_flip:${nextCard.id}`);
       await ctx.editMessageText(msg, { reply_markup: keyboard });
@@ -63,16 +56,18 @@ export async function reviewFlipCallback(ctx: BotContext) {
   await ctx.answerCallbackQuery();
 
   try {
+    const card = await getCardById(cardId);
+    const backMsg = card
+      ? await formatReviewCard(card, 'back')
+      : '카드를 찾을 수 없습니다.';
+
     const keyboard = new InlineKeyboard()
       .text('Again', `review_rate:${cardId}:1`)
       .text('Hard', `review_rate:${cardId}:2`)
       .text('Good', `review_rate:${cardId}:3`)
       .text('Easy', `review_rate:${cardId}:4`);
 
-    await ctx.editMessageText(
-      `카드를 얼마나 잘 기억하셨나요?`,
-      { reply_markup: keyboard }
-    );
+    await ctx.editMessageText(backMsg, { reply_markup: keyboard });
   } catch {
     // "message is not modified" 에러 무시
   }

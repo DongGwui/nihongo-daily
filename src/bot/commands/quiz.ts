@@ -1,6 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import type { BotContext } from '../bot.js';
 import { getRandomQuizzes, getQuizById } from '../../services/quiz.service.js';
+import { updateDailyQuizStats } from '../../services/daily.service.js';
 import type { JlptLevel } from '../../db/schema.js';
 
 export async function quizHandler(ctx: BotContext) {
@@ -54,6 +55,11 @@ export async function sendNextQuizOrSummary(ctx: BotContext) {
     const total = aq.quizIds.length;
     const correct = aq.correctCount;
     const elapsed = Math.round((Date.now() - aq.startedAt) / 1000);
+
+    // 통계 기록
+    if (ctx.session.userId) {
+      await updateDailyQuizStats(ctx.session.userId, total, correct);
+    }
 
     await ctx.reply(
       `🎉 퀴즈 완료!\n\n` +

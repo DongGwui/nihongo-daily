@@ -76,6 +76,15 @@ export async function createReviewCard(
   return card;
 }
 
+export async function getCardById(cardId: number) {
+  const [card] = await db
+    .select()
+    .from(reviewCards)
+    .where(eq(reviewCards.id, cardId))
+    .limit(1);
+  return card ?? null;
+}
+
 export async function getReviewStats(userId: number) {
   const due = await db
     .select({ count: sql<number>`count(*)` })

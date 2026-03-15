@@ -27,7 +27,7 @@ export async function reviewHandler(ctx: BotContext) {
   };
 
   const card = cards[0];
-  const msg = formatReviewCard(card, 'front');
+  const msg = await formatReviewCard(card, 'front');
 
   const keyboard = new InlineKeyboard()
     .text('뒤집기 🔄', `review_flip:${card.id}`);

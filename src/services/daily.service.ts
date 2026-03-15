@@ -6,6 +6,63 @@ import { getQuizzesByContent } from './quiz.service.js';
 import type { JlptLevel } from '../db/schema.js';
 import dayjs from 'dayjs';
 
+export async function updateDailyQuizStats(userId: number, totalQuizzes: number, correctCount: number) {
+  const today = dayjs().format('YYYY-MM-DD');
+
+  // 오늘 로그가 이미 있으면 업데이트, 없으면 생성
+  const [existing] = await db
+    .select()
+    .from(dailyLogs)
+    .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.date, today)))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(dailyLogs)
+      .set({
+        quizzesCompleted: existing.quizzesCompleted + 1,
+        correctCount: existing.correctCount + correctCount,
+        totalCount: existing.totalCount + totalQuizzes,
+      })
+      .where(eq(dailyLogs.id, existing.id));
+  } else {
+    await db
+      .insert(dailyLogs)
+      .values({
+        userId,
+        date: today,
+        quizzesCompleted: 1,
+        correctCount,
+        totalCount: totalQuizzes,
+      });
+  }
+
+  // 연속 학습 스트릭 업데이트
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (user) {
+    const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+    const newStreak = user.lastStudyDate === yesterday
+      ? user.streakCount + 1
+      : user.lastStudyDate === today
+        ? user.streakCount
+        : 1;
+
+    await db
+      .update(users)
+      .set({
+        streakCount: newStreak,
+        lastStudyDate: today,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+}
+
 export async function getUsersForTime(time: string) {
   return db
     .select()
