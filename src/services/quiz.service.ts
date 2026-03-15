@@ -17,6 +17,33 @@ export async function getRandomQuizzes(level: JlptLevel, count = 6) {
 
   // 각 유형별 1개씩 출제
   for (const type of QUIZ_TYPES) {
+    if (type === 'composition') {
+      // composition은 translate 퀴즈를 뒤집어서 생성
+      const [translateQuiz] = await db
+        .select()
+        .from(quizzes)
+        .where(and(
+          eq(quizzes.jlptLevel, level),
+          eq(quizzes.type, 'translate'),
+          sql`${quizzes.options} IS NULL`,
+        ))
+        .orderBy(sql`RANDOM()`)
+        .limit(1);
+
+      if (translateQuiz) {
+        // question(일본어 문장) → answer, answer(한국어 번역) → question
+        result.push({
+          ...translateQuiz,
+          id: translateQuiz.id,
+          type: 'composition' as const,
+          question: `다음을 일본어로 작성하세요:\n${translateQuiz.answer}`,
+          answer: translateQuiz.question,
+          options: null,
+        });
+      }
+      continue;
+    }
+
     const [quiz] = await db
       .select()
       .from(quizzes)
