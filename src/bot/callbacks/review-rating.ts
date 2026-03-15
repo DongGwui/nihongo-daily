@@ -8,43 +8,53 @@ export async function reviewRatingCallback(ctx: BotContext) {
   const data = ctx.callbackQuery?.data;
   if (!data || !ctx.session.userId) return;
 
-  // review_rate:{cardId}:{rating}
-  const parts = data.split(':');
-  const cardId = parseInt(parts[1], 10);
-  const grade = parseInt(parts[2], 10) as Grade;
-
-  await ctx.answerCallbackQuery();
-
-  const result = await reviewCard(cardId, grade);
-  if (!result) return;
-
-  const ar = ctx.session.activeReview;
-  if (!ar) return;
-
-  ar.currentIndex++;
+  if (ctx.session.processing) {
+    await ctx.answerCallbackQuery({ text: '처리 중입니다...' });
+    return;
+  }
+  ctx.session.processing = true;
 
   try {
-    if (ar.currentIndex >= ar.cardIds.length) {
-      const elapsed = Math.round((Date.now() - ar.startedAt) / 1000);
-      await ctx.editMessageText(
-        `✨ 복습 완료! ${ar.cardIds.length}장\n` +
-        `⏱️ 소요 시간: ${elapsed}초`
-      );
-      ctx.session.activeReview = null;
-      return;
-    }
+    // review_rate:{cardId}:{rating}
+    const parts = data.split(':');
+    const cardId = parseInt(parts[1], 10);
+    const grade = parseInt(parts[2], 10) as Grade;
 
-    // 다음 카드
-    const nextCardId = ar.cardIds[ar.currentIndex];
-    const [nextCard] = await getDueCards(ctx.session.userId, 1);
-    if (nextCard) {
-      const msg = await formatReviewCard(nextCard, 'front');
-      const keyboard = new InlineKeyboard()
-        .text('뒤집기 🔄', `review_flip:${nextCard.id}`);
-      await ctx.editMessageText(msg, { reply_markup: keyboard });
+    await ctx.answerCallbackQuery();
+
+    const result = await reviewCard(cardId, grade);
+    if (!result) return;
+
+    const ar = ctx.session.activeReview;
+    if (!ar) return;
+
+    ar.currentIndex++;
+
+    try {
+      if (ar.currentIndex >= ar.cardIds.length) {
+        const elapsed = Math.round((Date.now() - ar.startedAt) / 1000);
+        await ctx.editMessageText(
+          `✨ 복습 완료! ${ar.cardIds.length}장\n` +
+          `⏱️ 소요 시간: ${elapsed}초`
+        );
+        ctx.session.activeReview = null;
+        return;
+      }
+
+      // 다음 카드
+      const nextCardId = ar.cardIds[ar.currentIndex];
+      const [nextCard] = await getDueCards(ctx.session.userId, 1);
+      if (nextCard) {
+        const msg = await formatReviewCard(nextCard, 'front');
+        const keyboard = new InlineKeyboard()
+          .text('뒤집기 🔄', `review_flip:${nextCard.id}`);
+        await ctx.editMessageText(msg, { reply_markup: keyboard });
+      }
+    } catch {
+      // "message is not modified" 에러 무시
     }
-  } catch {
-    // "message is not modified" 에러 무시
+  } finally {
+    ctx.session.processing = false;
   }
 }
 
@@ -52,10 +62,16 @@ export async function reviewFlipCallback(ctx: BotContext) {
   const data = ctx.callbackQuery?.data;
   if (!data) return;
 
-  const cardId = parseInt(data.split(':')[1], 10);
-  await ctx.answerCallbackQuery();
+  if (ctx.session.processing) {
+    await ctx.answerCallbackQuery({ text: '처리 중입니다...' });
+    return;
+  }
+  ctx.session.processing = true;
 
   try {
+    const cardId = parseInt(data.split(':')[1], 10);
+    await ctx.answerCallbackQuery();
+
     const card = await getCardById(cardId);
     const backMsg = card
       ? await formatReviewCard(card, 'back')
@@ -70,5 +86,7 @@ export async function reviewFlipCallback(ctx: BotContext) {
     await ctx.editMessageText(backMsg, { reply_markup: keyboard });
   } catch {
     // "message is not modified" 에러 무시
+  } finally {
+    ctx.session.processing = false;
   }
 }

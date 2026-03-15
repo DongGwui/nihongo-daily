@@ -7,49 +7,69 @@ export async function quizAnswerCallback(ctx: BotContext) {
   const data = ctx.callbackQuery?.data;
   if (!data || !ctx.session.userId) return;
 
-  // quiz_answer:{quizId}:{selectedOption}
-  const parts = data.split(':');
-  const quizId = parseInt(parts[1], 10);
-  const selected = parts[2]; // A, B, C, D
-
-  const quiz = await getQuizById(quizId);
-  if (!quiz) return;
-
-  await ctx.answerCallbackQuery();
-
-  const options = quiz.options as string[] | null;
-  const selectedIndex = selected.charCodeAt(0) - 65; // A=0, B=1, ...
-  const userAnswer = options?.[selectedIndex] ?? selected;
-  const isCorrect = userAnswer === quiz.answer;
-
-  // 결과 저장
-  const elapsed = ctx.session.activeQuiz
-    ? Date.now() - ctx.session.activeQuiz.startedAt
-    : undefined;
-  await saveQuizResult(ctx.session.userId, quizId, userAnswer, isCorrect, elapsed);
-
-  ctx.session.lastQuizId = quizId;
+  // 중복 클릭 방지
+  if (ctx.session.processing) {
+    await ctx.answerCallbackQuery({ text: '처리 중입니다...' });
+    return;
+  }
+  ctx.session.processing = true;
 
   try {
-    if (isCorrect) {
-      if (ctx.session.activeQuiz) ctx.session.activeQuiz.correctCount++;
-      await ctx.editMessageText(
-        `✅ 정답! 「${quiz.answer}」\n` +
-        (quiz.explanation ? `\n💡 ${quiz.explanation}` : '')
-      );
-    } else {
-      // 오답 → 복습 카드 자동 생성
-      await createReviewCard(ctx.session.userId, 'vocabulary', quizId);
-      await ctx.editMessageText(
-        `❌ 오답! 정답은 「${quiz.answer}」\n` +
-        (quiz.explanation ? `\n💡 ${quiz.explanation}` : '') +
-        `\n\n📝 복습 카드에 추가되었습니다.`
-      );
-    }
-  } catch {
-    // "message is not modified" 에러 무시
-  }
+    // quiz_answer:{quizId}:{selectedOption}
+    const parts = data.split(':');
+    const quizId = parseInt(parts[1], 10);
+    const selected = parts[2]; // A, B, C, D
 
-  // 다음 퀴즈
-  await sendNextQuizOrSummary(ctx);
+    // 이미 처리된 퀴즈인지 확인
+    if (ctx.session.activeQuiz) {
+      const currentQuizId = ctx.session.activeQuiz.quizIds[ctx.session.activeQuiz.currentIndex];
+      if (quizId !== currentQuizId) {
+        await ctx.answerCallbackQuery();
+        return;
+      }
+    }
+
+    const quiz = await getQuizById(quizId);
+    if (!quiz) return;
+
+    await ctx.answerCallbackQuery();
+
+    const options = quiz.options as string[] | null;
+    const selectedIndex = selected.charCodeAt(0) - 65; // A=0, B=1, ...
+    const userAnswer = options?.[selectedIndex] ?? selected;
+    const isCorrect = userAnswer === quiz.answer;
+
+    // 결과 저장
+    const elapsed = ctx.session.activeQuiz
+      ? Date.now() - ctx.session.activeQuiz.startedAt
+      : undefined;
+    await saveQuizResult(ctx.session.userId, quizId, userAnswer, isCorrect, elapsed);
+
+    ctx.session.lastQuizId = quizId;
+
+    try {
+      if (isCorrect) {
+        if (ctx.session.activeQuiz) ctx.session.activeQuiz.correctCount++;
+        await ctx.editMessageText(
+          `✅ 정답! 「${quiz.answer}」\n` +
+          (quiz.explanation ? `\n💡 ${quiz.explanation}` : '')
+        );
+      } else {
+        // 오답 → 복습 카드 자동 생성
+        await createReviewCard(ctx.session.userId, 'vocabulary', quizId);
+        await ctx.editMessageText(
+          `❌ 오답! 정답은 「${quiz.answer}」\n` +
+          (quiz.explanation ? `\n💡 ${quiz.explanation}` : '') +
+          `\n\n📝 복습 카드에 추가되었습니다.`
+        );
+      }
+    } catch {
+      // "message is not modified" 에러 무시
+    }
+
+    // 다음 퀴즈
+    await sendNextQuizOrSummary(ctx);
+  } finally {
+    ctx.session.processing = false;
+  }
 }

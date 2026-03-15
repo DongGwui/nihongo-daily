@@ -16,6 +16,7 @@ export interface SessionData {
   } | null;
 
   lastQuizId: number | null;
+  processing: boolean;
 }
 
 export function createInitialSession(): SessionData {
@@ -25,5 +26,6 @@ export function createInitialSession(): SessionData {
     activeQuiz: null,
     activeReview: null,
     lastQuizId: null,
+    processing: false,
   };
 }
