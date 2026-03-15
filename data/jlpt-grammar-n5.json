@@ -1,0 +1,12 @@
+[
+  { "pattern": "〜は〜です", "meaning_ko": "~은/는 ~입니다", "example": "これは本です。", "example_ko": "이것은 책입니다." },
+  { "pattern": "〜を〜ます", "meaning_ko": "~을/를 ~합니다", "example": "本を読みます。", "example_ko": "책을 읽습니다." },
+  { "pattern": "〜に行きます", "meaning_ko": "~에 갑니다", "example": "学校に行きます。", "example_ko": "학교에 갑니다." },
+  { "pattern": "〜で〜ます", "meaning_ko": "~에서 ~합니다 / ~로 ~합니다", "example": "バスで行きます。", "example_ko": "버스로 갑니다." },
+  { "pattern": "〜たいです", "meaning_ko": "~하고 싶습니다", "example": "日本に行きたいです。", "example_ko": "일본에 가고 싶습니다." },
+  { "pattern": "〜てください", "meaning_ko": "~해 주세요", "example": "ここに書いてください。", "example_ko": "여기에 써 주세요." },
+  { "pattern": "〜ています", "meaning_ko": "~하고 있습니다", "example": "今、勉強しています。", "example_ko": "지금 공부하고 있습니다." },
+  { "pattern": "〜ないでください", "meaning_ko": "~하지 마세요", "example": "ここで写真を撮らないでください。", "example_ko": "여기서 사진을 찍지 마세요." },
+  { "pattern": "〜たことがあります", "meaning_ko": "~한 적이 있습니다", "example": "日本に行ったことがあります。", "example_ko": "일본에 간 적이 있습니다." },
+  { "pattern": "〜と思います", "meaning_ko": "~라고 생각합니다", "example": "明日は雨だと思います。", "example_ko": "내일은 비라고 생각합니다." }
+]
