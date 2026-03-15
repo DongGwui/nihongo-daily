@@ -1,0 +1,12 @@
+[
+  { "pattern": "〜そうです (様態)", "meaning_ko": "~할 것 같다 (모양)", "example": "雨が降りそうです。", "example_ko": "비가 올 것 같습니다." },
+  { "pattern": "〜そうです (伝聞)", "meaning_ko": "~라고 합니다 (전문)", "example": "明日は休みだそうです。", "example_ko": "내일은 쉰다고 합니다." },
+  { "pattern": "〜ようにする", "meaning_ko": "~하도록 하다", "example": "毎日運動するようにしています。", "example_ko": "매일 운동하도록 하고 있습니다." },
+  { "pattern": "〜ことにする", "meaning_ko": "~하기로 하다", "example": "来月から日本語を勉強することにしました。", "example_ko": "다음 달부터 일본어를 공부하기로 했습니다." },
+  { "pattern": "〜てしまう", "meaning_ko": "~해 버리다", "example": "全部食べてしまいました。", "example_ko": "전부 먹어 버렸습니다." },
+  { "pattern": "〜ば〜ほど", "meaning_ko": "~하면 ~할수록", "example": "練習すればするほど上手になります。", "example_ko": "연습하면 할수록 잘하게 됩니다." },
+  { "pattern": "〜させる (使役)", "meaning_ko": "~시키다", "example": "子供に野菜を食べさせます。", "example_ko": "아이에게 야채를 먹게 합니다." },
+  { "pattern": "〜られる (受身)", "meaning_ko": "~당하다 (수동)", "example": "先生に褒められました。", "example_ko": "선생님에게 칭찬받았습니다." },
+  { "pattern": "〜はずです", "meaning_ko": "~할 것입니다 (당연)", "example": "彼はもう来ているはずです。", "example_ko": "그는 이미 와 있을 것입니다." },
+  { "pattern": "〜ために", "meaning_ko": "~를 위해", "example": "健康のために運動します。", "example_ko": "건강을 위해 운동합니다." }
+]
