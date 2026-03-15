@@ -1,9 +1,13 @@
 import { config } from './lib/config.js';
 import { createBot } from './bot/bot.js';
 import { startScheduler } from './pipeline/scheduler.js';
+import { initDatabase } from './db/client.js';
 
 async function main() {
   console.log('Starting nihongo-daily bot...');
+
+  // DB 테이블 자동 생성
+  await initDatabase();
 
   const bot = createBot(config.BOT_TOKEN);
 
