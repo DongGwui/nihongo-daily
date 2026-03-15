@@ -74,9 +74,11 @@ export default function LoginPage() {
 
           <div className="pt-4">
             <div id="telegram-login" className="flex justify-center" />
-            <p className="text-xs text-gray-500 mt-3">
-              Telegram 봇 사용자만 로그인할 수 있습니다
-            </p>
+            <div className="mt-4 pt-4 border-t border-gray-800">
+              <p className="text-xs text-gray-500">
+                위젯이 작동하지 않으면 봇에서 <code className="text-indigo-400">/web</code> 명령을 보내세요
+              </p>
+            </div>
           </div>
         </div>
       </div>
