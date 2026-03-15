@@ -18,11 +18,20 @@ export async function quizHandler(ctx: BotContext) {
     return;
   }
 
+  // composition 등 가상 퀴즈의 변환 데이터를 overrides에 저장
+  const overrides: Record<number, { question: string; answer: string; type: string }> = {};
+  for (const q of quizList) {
+    if (q.type === 'composition') {
+      overrides[q.id] = { question: q.question, answer: q.answer, type: q.type };
+    }
+  }
+
   ctx.session.activeQuiz = {
     quizIds: quizList.map(q => q.id),
     currentIndex: 0,
     correctCount: 0,
     startedAt: Date.now(),
+    overrides: Object.keys(overrides).length > 0 ? overrides : undefined,
   };
 
   await sendQuizMessage(ctx, quizList[0]);
@@ -72,8 +81,13 @@ export async function sendNextQuizOrSummary(ctx: BotContext) {
     return;
   }
 
-  const nextQuiz = await getQuizById(aq.quizIds[aq.currentIndex]);
+  const nextQuizId = aq.quizIds[aq.currentIndex];
+  const nextQuiz = await getQuizById(nextQuizId);
   if (nextQuiz) {
-    await sendQuizMessage(ctx, nextQuiz);
+    const override = aq.overrides?.[nextQuizId];
+    const quizToSend = override
+      ? { ...nextQuiz, question: override.question, answer: override.answer, type: override.type }
+      : nextQuiz;
+    await sendQuizMessage(ctx, quizToSend);
   }
 }

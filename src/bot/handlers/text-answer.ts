@@ -13,8 +13,14 @@ export async function textAnswerHandler(ctx: BotContext) {
   if (!aq || !ctx.session.userId || !ctx.message?.text) return;
 
   const quizId = aq.quizIds[aq.currentIndex];
-  const quiz = await getQuizById(quizId);
-  if (!quiz) return;
+  const rawQuiz = await getQuizById(quizId);
+  if (!rawQuiz) return;
+
+  // overrides 적용 (composition 등 가상 퀴즈)
+  const override = aq.overrides?.[quizId];
+  const quiz = override
+    ? { ...rawQuiz, question: override.question, answer: override.answer, type: override.type }
+    : rawQuiz;
 
   // 4지선다 퀴즈는 인라인 키보드로 처리
   if (quiz.options && (quiz.options as string[]).length > 0) return;

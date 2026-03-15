@@ -7,6 +7,8 @@ export interface SessionData {
     currentIndex: number;
     correctCount: number;
     startedAt: number;
+    // composition 등 가상 퀴즈의 변환 데이터 (quizId → overrides)
+    overrides?: Record<number, { question: string; answer: string; type: string }>;
   } | null;
 
   activeReview: {

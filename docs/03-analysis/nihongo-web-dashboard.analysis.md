@@ -1,381 +1,357 @@
-# nihongo-web-dashboard Analysis Report
+# nihongo-web-dashboard Gap Analysis Report
 
-> **Analysis Type**: Gap Analysis (Design vs Implementation)
+> **Summary**: Design-Implementation gap analysis for the web dashboard feature
 >
-> **Project**: nihongo-daily
-> **Version**: 0.2.0
-> **Analyst**: Claude (gap-detector)
-> **Date**: 2026-03-15
-> **Design Doc**: [nihongo-web-dashboard.design.md](../02-design/features/nihongo-web-dashboard.design.md)
+> **Author**: Claude (gap-detector)
+> **Created**: 2026-03-15
+> **Last Modified**: 2026-03-16
+> **Status**: Approved
+>
+> **Design Document**: `docs/02-design/features/nihongo-web-dashboard.design.md`
 > **Implementation Path**: `web/`
 
 ---
 
-## 1. Analysis Overview
+## 1. Overall Scores
 
-### 1.1 Analysis Purpose
-
-Re-analysis after 8 fixes applied to the nihongo-web-dashboard implementation. Previous analysis scored 78%. This report verifies all fixes and recalculates the Match Rate.
-
-### 1.2 Analysis Scope
-
-- **Design Document**: `docs/02-design/features/nihongo-web-dashboard.design.md`
-- **Implementation Path**: `web/`
-- **Analysis Date**: 2026-03-15
-- **Previous Analysis**: v0.1 (78%)
-- **Categories**: API Endpoints, Pages, Components, Query Modules, Auth/Session, Infrastructure, Configuration, Data Model
-
-### 1.3 Fixes Verified
-
-| # | Fix Description | File | Verified |
-|---|-----------------|------|:--------:|
-| 1 | `level_test_results` table added to schema | `lib/schema.ts:122-134` | ✅ |
-| 2 | `levelTestResults` exported from db.ts | `lib/db.ts:8` | ✅ |
-| 3 | Submit API saves results to level_test_results | `app/api/level-test/submit/route.ts:31-38` | ✅ |
-| 4 | reviewDueCount bug fixed (`gte` -> `lte`) | `app/api/me/route.ts:21` | ✅ |
-| 5 | streakHistory populated from users table | `lib/queries/stats.ts:32-36,100-101` | ✅ |
-| 6 | docker-compose.yml updated with web service + Traefik | `docker-compose.yml:44-61` | ✅ |
-| 7 | TodaySummary component created | `components/dashboard/today-summary.tsx` | ✅ |
-| 8 | ReviewReminder component created | `components/dashboard/review-reminder.tsx` | ✅ |
-| 9 | Dashboard page uses TodaySummary + ReviewReminder | `app/dashboard/page.tsx:7-8,48-53` | ✅ |
+| Category | Score | Status |
+|----------|:-----:|:------:|
+| API Endpoints | 97% | ✅ |
+| Pages & Routing | 100% | ✅ |
+| Components | 82% | ⚠️ |
+| Query Modules | 100% | ✅ |
+| Auth / Session | 100% | ✅ |
+| Data Model | 100% | ✅ |
+| Infrastructure | 100% | ✅ |
+| Configuration | 85% | ⚠️ |
+| Architecture Compliance | 95% | ✅ |
+| Convention Compliance | 98% | ✅ |
+| **Overall Match Rate** | **92%** | **✅** |
 
 ---
 
-## 2. Overall Scores
-
-| Category | v0.1 Score | v0.2 Score | Status | Delta |
-|----------|:----------:|:----------:|:------:|:-----:|
-| API Endpoints | 94% | 97% | ✅ | +3 |
-| Pages | 100% | 100% | ✅ | -- |
-| Components | 52% | 82% | ⚠️ | +30 |
-| Query Modules | 100% | 100% | ✅ | -- |
-| Auth/Session | 100% | 100% | ✅ | -- |
-| Data Model | 86% | 100% | ✅ | +14 |
-| Infrastructure | 50% | 100% | ✅ | +50 |
-| Configuration | 85% | 85% | ⚠️ | -- |
-| **Overall Match Rate** | **78%** | **92%** | **✅** | **+14** |
-
----
-
-## 3. Gap Analysis (Design vs Implementation)
-
-### 3.1 API Endpoints
+## 2. API Endpoints
 
 | Design Endpoint | Implementation File | Status | Notes |
-|-----------------|---------------------|--------|-------|
-| POST /api/auth/telegram | `app/api/auth/telegram/route.ts` | ✅ Match | HMAC verify + JWT + error codes match |
-| GET /api/me | `app/api/me/route.ts` | ✅ Match | Returns all designed fields; reviewDueCount uses correct `lte` |
-| GET /api/calendar | `app/api/calendar/route.ts` | ✅ Match | months query param supported |
-| GET /api/stats | `app/api/stats/route.ts` | ✅ Match | period query param; streakHistory now populated |
-| GET /api/contents | `app/api/contents/route.ts` | ✅ Match | level, type, q, page, limit params |
-| GET /api/contents/[id] | `app/api/contents/[id]/route.ts` | ✅ Match | Returns content + quizzes + vocabularies |
-| POST /api/level-test/start | `app/api/level-test/start/route.ts` | ⚠️ Partial | Missing `testId` UUID in response |
-| POST /api/level-test/submit | `app/api/level-test/submit/route.ts` | ✅ Match | Saves to level_test_results + returns result |
-| - | PATCH /api/level-test/submit | ✅ Added | Level apply endpoint (functionally needed) |
+|-----------------|---------------------|:------:|-------|
+| `POST /api/auth/telegram` | `app/api/auth/telegram/route.ts` | ✅ | HMAC-SHA256 verify, JWT cookie, NOT_REGISTERED error |
+| `GET /api/me` | `app/api/me/route.ts` | ✅ | All fields: id, username, jlptLevel, streakCount, isActive, reviewDueCount |
+| `GET /api/calendar?months=6` | `app/api/calendar/route.ts` | ✅ | months param, data+summary response |
+| `GET /api/stats?period=` | `app/api/stats/route.ts` | ✅ | week/month/all, accuracy+quizTypes+levelDistribution+streakHistory |
+| `GET /api/contents?level=&type=&q=&page=&limit=` | `app/api/contents/route.ts` | ✅ | All query params, pagination |
+| `GET /api/contents/:id` | `app/api/contents/[id]/route.ts` | ✅ | content + quizzes + vocabularies |
+| `POST /api/level-test/start` | `app/api/level-test/start/route.ts` | ⚠️ | Missing `testId` UUID in response |
+| `POST /api/level-test/submit` | `app/api/level-test/submit/route.ts` | ✅ | Saves to level_test_results, returns scores |
 
-**API Match Rate: 97%** (7.75/8 endpoints match; 1 minor deviation: testId)
+**Added (not in design):**
 
-### 3.2 Pages
+| Endpoint | File | Notes |
+|----------|------|-------|
+| `GET /api/auth/token` | `app/api/auth/token/route.ts` | Bot-based HMAC token login (intentional workaround for Telegram Widget issues) |
+| `PATCH /api/level-test/submit` | `app/api/level-test/submit/route.ts:43` | Level apply endpoint (design implied via `applyUrl` but not specified as endpoint) |
 
-| Design Page | Implementation File | Status | Notes |
-|-------------|---------------------|--------|-------|
-| Login (`/`) | `app/page.tsx` | ✅ Match | Telegram Login Widget integrated |
-| Dashboard (`/dashboard`) | `app/dashboard/page.tsx` | ✅ Match | Server Component + TodaySummary + ReviewReminder |
-| Stats (`/dashboard/stats`) | `app/dashboard/stats/page.tsx` | ✅ Match | Client Component + SWR + period tabs |
-| Search (`/dashboard/search`) | `app/dashboard/search/page.tsx` | ✅ Match | Client Component + SWR + filters |
-| Level Test (`/dashboard/level-test`) | `app/dashboard/level-test/page.tsx` | ✅ Match | Client Component + state-driven flow |
-
-**Page Match Rate: 100%** (5/5)
-
-### 3.3 Components
-
-| Design Component | Expected Path | Status | Notes |
-|------------------|---------------|--------|-------|
-| summary-cards.tsx | `components/dashboard/` | ✅ Match | Props match design |
-| calendar-heatmap.tsx | `components/dashboard/` | ✅ Match | react-activity-calendar + tooltip |
-| today-summary.tsx | `components/dashboard/` | ✅ Match | **NEW** -- shows today's quiz count + accuracy bar |
-| review-reminder.tsx | `components/dashboard/` | ✅ Match | **NEW** -- shows FSRS due card count |
-| accuracy-chart.tsx | `components/stats/` | ✅ Match | recharts LineChart |
-| quiz-type-radar.tsx | `components/stats/` | ✅ Match | recharts RadarChart |
-| level-distribution.tsx | `components/stats/` | ✅ Match | recharts PieChart (donut) |
-| search-filters.tsx | `components/search/` | ⚠️ Inline | Functionally present in search page |
-| content-card.tsx | `components/search/` | ⚠️ Inline | Functionally present in search page |
-| content-detail.tsx | `components/search/` | ❌ Missing | ContentDetailModal not implemented |
-| test-progress.tsx | `components/level-test/` | ⚠️ Inline | Functionally present in level-test page |
-| question-card.tsx | `components/level-test/` | ⚠️ Inline | Functionally present in level-test page |
-| result-card.tsx | `components/level-test/` | ⚠️ Inline | Functionally present in level-test page |
-| header.tsx | `components/layout/` | ⚠️ Inline | Functionally present in dashboard layout |
-| sidebar.tsx | `components/layout/` | ⚠️ Inline | Functionally present in dashboard layout |
-| auth-guard.tsx | `components/layout/` | ⚠️ Inline | Handled in dashboard layout directly |
-| **shadcn/ui** | `components/ui/` | ⚠️ Deviation | Raw Tailwind used; acceptable for MVP |
-
-**Component Match Rate: 82%** (7 extracted files + 8 functionally inline = 15/17 functional; 1 missing feature, 1 acceptable deviation)
-
-### 3.4 Query Modules
-
-| Design Module | Implementation File | Status | Notes |
-|---------------|---------------------|--------|-------|
-| calendar.ts | `lib/queries/calendar.ts` | ✅ Match | Level calc logic matches design |
-| stats.ts | `lib/queries/stats.ts` | ✅ Match | All 4 sections; streakHistory now populated from users table |
-| contents.ts | `lib/queries/contents.ts` | ✅ Match | Search + detail functions |
-| level-test.ts | `lib/queries/level-test.ts` | ✅ Match | Generation + calculation |
-
-**Query Module Match Rate: 100%** (4/4)
-
-### 3.5 Auth/Session
-
-| Design Item | Implementation File | Status | Notes |
-|-------------|---------------------|--------|-------|
-| Telegram HMAC-SHA256 verify | `lib/auth.ts` | ✅ Match | SHA-256 secret + HMAC + 24h check |
-| JWT with jose | `lib/session.ts` | ✅ Match | HS256, 7d expiry, httpOnly cookie |
-| JWT payload (sub, tid, level) | `lib/session.ts:15-18` | ✅ Match | Exact fields match design |
-| Dashboard layout auth guard | `app/dashboard/layout.tsx` | ✅ Match | getSession() + redirect('/') |
-| Cookie name: "session" | `lib/session.ts:11` | ✅ Match | |
-
-**Auth/Session Match Rate: 100%** (5/5)
-
-### 3.6 Data Model
-
-| Design Item | Implementation | Status | Notes |
-|-------------|---------------|--------|-------|
-| 7 Phase 1 tables (re-export) | `lib/schema.ts` + `lib/db.ts` | ✅ Match | All 7 tables defined and exported |
-| `level_test_results` table | `lib/schema.ts:124-134` | ✅ Match | **FIXED** -- all fields match design (id, userId, recommendedLevel, scores, totalQuestions, correctCount, takenAt) |
-| `idx_level_test_user` index | `lib/schema.ts:133` | ✅ Match | **FIXED** -- index on userId |
-| `levelTestResults` exported | `lib/db.ts:8` | ✅ Match | **FIXED** -- available for queries |
-| Connection pool max=5 | `lib/db.ts:13` | ✅ Match | `{ max: 5 }` |
-| Schema approach | Local `lib/schema.ts` | ✅ Changed | Local definition (improvement over cross-directory import) |
-
-**Data Model Match Rate: 100%** (6/6)
-
-### 3.7 Infrastructure
-
-| Design Item | Implementation | Status | Notes |
-|-------------|---------------|--------|-------|
-| Dockerfile | `web/Dockerfile` | ✅ Match | Multi-stage, node:22-alpine, standalone |
-| docker-compose.yml web service | `docker-compose.yml:44-61` | ✅ Match | **FIXED** -- `web` service with correct build context |
-| Traefik labels | `docker-compose.yml:56-61` | ✅ Match | **FIXED** -- all 5 labels match design exactly |
-| Cloudflare Tunnel config | - | N/A | External config, not verifiable |
-
-**Infrastructure Match Rate: 100%** (2/2 verifiable items)
-
-### 3.8 Configuration
-
-| Design Item | Implementation | Status | Notes |
-|-------------|---------------|--------|-------|
-| next.config.ts (standalone output) | `next.config.ts` | ✅ Match | `output: 'standalone'` + `serverExternalPackages: ['postgres']` |
-| tsconfig.json paths @/* | `tsconfig.json` | ⚠️ Partial | Has `@/*` but missing `@db/*` (not needed since local schema) |
-| tailwind.config.ts | Not found | ⚠️ Changed | Tailwind v4 CSS-based config (acceptable) |
-| globals.css (dark theme) | `app/globals.css` | ✅ Match | Dark theme variables defined |
-| shadcn/ui initialization | No `components.json` | ⚠️ Deviation | Raw Tailwind used; acceptable for MVP |
-| Package dependencies | `package.json` | ✅ Match | All core deps present |
-
-**Configuration Match Rate: 85%** (4.5/6; deviations are acceptable)
+**Score: 97%** -- 1 minor gap (testId UUID)
 
 ---
 
-## 4. Detailed Findings
+## 3. Pages & Routing
 
-### 4.1 Resolved Issues (v0.1 -> v0.2)
+| Design Page | Implementation | Status | Data Strategy |
+|-------------|---------------|:------:|---------------|
+| `/` (Login) | `app/page.tsx` | ✅ | Client Component, Telegram Widget + fallback /web hint |
+| `/dashboard` | `app/dashboard/page.tsx` | ✅ | Server Component + direct DB query |
+| `/dashboard/stats` | `app/dashboard/stats/page.tsx` | ✅ | Client Component + SWR |
+| `/dashboard/search` | `app/dashboard/search/page.tsx` | ✅ | Client Component + SWR |
+| `/dashboard/level-test` | `app/dashboard/level-test/page.tsx` | ✅ | Client Component + state |
 
-| # | Item | Was | Now | Files Changed |
-|---|------|-----|-----|---------------|
-| 1 | level_test_results table | ❌ Missing | ✅ Present | `lib/schema.ts`, `lib/db.ts` |
-| 2 | Submit API DB write | ❌ Missing | ✅ Saves to level_test_results | `app/api/level-test/submit/route.ts` |
-| 3 | reviewDueCount direction | ❌ `gte` (wrong) | ✅ `lte` (correct) | `app/api/me/route.ts` |
-| 4 | streakHistory.current | ❌ Hardcoded 0 | ✅ From users.streakCount | `lib/queries/stats.ts` |
-| 5 | docker-compose web service | ❌ Missing | ✅ Present with Traefik | `docker-compose.yml` |
-| 6 | TodaySummary component | ❌ Missing | ✅ Implemented | `components/dashboard/today-summary.tsx` |
-| 7 | ReviewReminder component | ❌ Missing | ✅ Implemented | `components/dashboard/review-reminder.tsx` |
-| 8 | Dashboard integration | ⚠️ Incomplete | ✅ Full composition | `app/dashboard/page.tsx` |
+Data fetching strategies match design Section 6.3 exactly.
 
-### 4.2 Remaining Gaps
-
-| # | Item | Design Location | Description | Impact | Priority |
-|---|------|-----------------|-------------|--------|----------|
-| 1 | ContentDetailModal | design:88,521 | Click-to-view content detail with furigana + translation + quizzes | Medium | Deferred |
-| 2 | testId (UUID) in level test start | design:388 | Unique test session identifier in response | Low | Minor |
-| 3 | shadcn/ui components | design:72,537-541 | Design system components (Button, Card, etc.) | Low | Acceptable deviation -- raw Tailwind achieves same result |
-| 4 | Component file extraction | design Section 6 | 8 components inlined in pages vs separate files | Low | Acceptable -- functional parity maintained |
-
-### 4.3 Added Features (Design X, Implementation O)
-
-| # | Item | Implementation Location | Description |
-|---|------|------------------------|-------------|
-| 1 | PATCH /api/level-test/submit | `app/api/level-test/submit/route.ts:43` | Level apply endpoint (design implied but not specified) |
-| 2 | avgAccuracy in calendar summary | `lib/queries/calendar.ts:20` | Extra field not in design response |
-| 3 | Local schema definition | `lib/schema.ts` | Replaces cross-directory import (improvement) |
-
-### 4.4 Changed Features (Design != Implementation)
-
-| # | Item | Design | Implementation | Impact |
-|---|------|--------|----------------|--------|
-| 1 | Component extraction | Separate files per component | Inline in pages (search, level-test, layout) | None (functional parity) |
-| 2 | level-test submit request | `{ testId, answers: [{ quizId, answer }] }` | `{ questions, answers: Record<number, string> }` | Low (API contract differs slightly) |
-| 3 | Stats streakHistory.longest | Separate longestStreak field | Uses current streakCount as fallback (no longest field in DB) | Low (DB schema limitation) |
-| 4 | Tailwind config | `tailwind.config.ts` file | CSS-based `@theme` in globals.css | None (Tailwind v4 approach) |
-| 5 | Package versions | Next 15, React 19 | Next 16.1.6, React 19.2.3 | None (upgrades) |
+**Score: 100%**
 
 ---
 
-## 5. Architecture Compliance
+## 4. Components
 
-### 5.1 Layer Structure (Starter/Dynamic Level)
+### 4.1 Extracted as Separate Files (7/17)
+
+| Component | Path | Status |
+|-----------|------|:------:|
+| `SummaryCards` | `components/dashboard/summary-cards.tsx` | ✅ |
+| `CalendarHeatmap` | `components/dashboard/calendar-heatmap.tsx` | ✅ |
+| `TodaySummary` | `components/dashboard/today-summary.tsx` | ✅ |
+| `ReviewReminder` | `components/dashboard/review-reminder.tsx` | ✅ |
+| `AccuracyChart` | `components/stats/accuracy-chart.tsx` | ✅ |
+| `QuizTypeRadar` | `components/stats/quiz-type-radar.tsx` | ✅ |
+| `LevelDistribution` | `components/stats/level-distribution.tsx` | ✅ |
+
+### 4.2 Functionally Present but Inline (8/17)
+
+| Design Component | Location | Functional? |
+|------------------|----------|:-----------:|
+| `SearchFilters` | `app/dashboard/search/page.tsx:37-68` | ✅ |
+| `ContentCard` | `app/dashboard/search/page.tsx:81-97` | ✅ |
+| `TestProgress` | `app/dashboard/level-test/page.tsx:122-129` | ✅ |
+| `QuestionCard` | `app/dashboard/level-test/page.tsx:132-147` | ✅ |
+| `ResultCard` | `app/dashboard/level-test/page.tsx:151-203` | ✅ |
+| `Header` | `app/dashboard/layout.tsx:24-26` | ✅ (logo in sidebar) |
+| `Sidebar` | `app/dashboard/layout.tsx:22-46` | ✅ |
+| `AuthGuard` | `app/dashboard/layout.tsx:17-18` | ✅ (getSession + redirect) |
+
+### 4.3 Missing Features (1/17)
+
+| Design Component | Expected Path | Status | Impact |
+|------------------|---------------|:------:|--------|
+| `ContentDetailModal` | `components/search/content-detail.tsx` | ❌ | Medium -- furigana + translation + related quizzes modal not available |
+
+### 4.4 Design System Deviation
+
+| Design | Implementation | Impact |
+|--------|---------------|--------|
+| shadcn/ui (Button, Card, Input, Select, Badge, Tabs, Dialog, Skeleton, Separator) | Raw Tailwind CSS with custom dark theme | Low -- visual parity achieved |
+| `components/ui/` directory | Not present | Low -- MVP acceptable |
+
+**Score: 82%** -- 7 extracted + 8 inline functional + 1 missing + 1 deviation
+
+---
+
+## 5. Query Modules
+
+| Design Module | Implementation | Status |
+|---------------|---------------|:------:|
+| `lib/queries/calendar.ts` | `getCalendarData(userId, months)` -- level calc (0-4), summary with totalDays/currentStreak/longestStreak/totalQuizzes | ✅ |
+| `lib/queries/stats.ts` | `getStatsData(userId, period)` -- accuracy, quizTypes, levelDistribution, streakHistory | ✅ |
+| `lib/queries/contents.ts` | `searchContents(userId, params)` + `getContentDetail(id)` -- filters, pagination, studied mark | ✅ |
+| `lib/queries/level-test.ts` | `generateLevelTest(userId)` + `calculateResult()` -- 5 levels x 5 questions, 70% threshold | ✅ |
+
+**Score: 100%**
+
+---
+
+## 6. Auth / Session
+
+| Design Item | Implementation | Status |
+|-------------|---------------|:------:|
+| Telegram HMAC-SHA256 verify (SHA-256 secret, sorted key=value, 24h expiry) | `lib/auth.ts:13-35` | ✅ |
+| JWT with jose (HS256, 7d, httpOnly cookie) | `lib/session.ts:14-26,45-55` | ✅ |
+| JWT payload: `sub`, `tid`, `level` | `lib/session.ts:16-18` | ✅ |
+| Cookie name: `session` | `lib/session.ts:11` | ✅ |
+| AuthGuard in dashboard layout | `app/dashboard/layout.tsx:17-18` | ✅ |
+| Bot-based token auth (workaround) | `app/api/auth/token/route.ts` | ✅ (known deviation) |
+
+**Score: 100%**
+
+---
+
+## 7. Data Model
+
+| Design Item | Implementation | Status |
+|-------------|---------------|:------:|
+| 7 Phase 1 tables re-exported | `lib/schema.ts` (users, contents, vocabularies, quizzes, userQuizResults, reviewCards, dailyLogs) | ✅ |
+| `level_test_results` table (id, userId, recommendedLevel, scores JSONB, totalQuestions, correctCount, takenAt) | `lib/schema.ts:124-134` | ✅ |
+| `idx_level_test_user` index | `lib/schema.ts:133` | ✅ |
+| DB connection pool max=5 | `lib/db.ts:13` `{ max: 5 }` | ✅ |
+| Schema approach: local definition instead of cross-directory import | `lib/schema.ts` (full local copy) | ✅ (improvement) |
+
+**Score: 100%**
+
+---
+
+## 8. Infrastructure
+
+| Design Item | Implementation | Status | Known Deviations |
+|-------------|---------------|:------:|------------------|
+| `web/Dockerfile` (multi-stage, node:22-alpine, standalone) | `web/Dockerfile` | ✅ | `HOSTNAME=0.0.0.0` added, `RUN npm ci` without `--omit=dev` (build needs devDeps), security user added |
+| `docker-compose.yml` web service | Lines 44-62 | ✅ | `context: ./web` (not root), `entrypoints=web` (not websecure), `proxy` network added |
+| Traefik labels (enable, rule, entrypoints, service port) | Lines 56-62 | ✅ | 4/5 labels match; TLS certresolver omitted (Cloudflare handles) |
+
+All deviations listed are known and intentional per the user's specifications.
+
+**Score: 100%**
+
+---
+
+## 9. Configuration
+
+| Design Item | Implementation | Status | Notes |
+|-------------|---------------|:------:|-------|
+| `next.config.ts` (standalone output) | `output: 'standalone'`, `serverExternalPackages: ['postgres']` | ✅ | |
+| `tsconfig.json` paths `@/*` | Present | ⚠️ | Missing `@db/*` alias (not needed -- local schema) |
+| `tailwind.config.ts` | Not found | ⚠️ | Tailwind v4 uses CSS `@theme` in `globals.css` |
+| `globals.css` dark theme | `app/globals.css` with `@theme inline` | ✅ | |
+| shadcn/ui init | Not initialized | ⚠️ | Raw Tailwind; acceptable for MVP |
+| Package deps (all core libs) | `package.json` | ✅ | next, react, drizzle-orm, jose, recharts, react-activity-calendar, swr, dayjs, postgres |
+
+| Design Version | Actual Version | Delta |
+|---------------|----------------|-------|
+| Next.js ^15.0.0 | 16.1.6 | Upgraded |
+| React ^19.0.0 | 19.2.3 | Upgraded |
+| drizzle-orm ^0.38.0 | ^0.45.1 | Upgraded |
+| recharts ^2.13.0 | ^3.8.0 | Major upgrade |
+| jose ^5.0.0 | ^6.2.1 | Major upgrade |
+
+**Score: 85%**
+
+---
+
+## 10. Architecture Compliance
+
+### 10.1 Layer Structure (Dynamic Level)
 
 | Expected | Actual | Status |
-|----------|--------|--------|
-| `app/` (pages + routes) | `app/` | ✅ |
+|----------|--------|:------:|
+| `app/` (pages + API routes) | `app/` | ✅ |
 | `components/` (UI) | `components/` | ✅ |
-| `lib/` (infrastructure) | `lib/` | ✅ |
+| `lib/` (infrastructure + DB) | `lib/` | ✅ |
 | `lib/queries/` (data access) | `lib/queries/` | ✅ |
 
-### 5.2 Data Fetching Strategy Match
+### 10.2 Dependency Direction
 
-| Page | Design Strategy | Actual Strategy | Status |
-|------|----------------|-----------------|--------|
-| Dashboard | Server Component + fetch | Server Component + direct query | ✅ Match |
-| Stats | Client Component + SWR | Client Component + SWR | ✅ Match |
-| Search | Client Component + SWR | Client Component + SWR | ✅ Match |
-| Level Test | Client Component + state | Client Component + state | ✅ Match |
+| Flow | Status |
+|------|:------:|
+| Pages -> Components | ✅ |
+| Pages -> lib/queries (Server Components only) | ✅ |
+| API Routes -> lib/session -> lib/db | ✅ |
+| API Routes -> lib/queries | ✅ |
+| Components -> no direct DB/query imports | ✅ |
 
-### 5.3 Dependency Direction
+No dependency direction violations detected.
 
-All files follow correct dependency flow: Pages -> Components, Pages -> Queries, API Routes -> Session -> DB. No violations detected.
+### 10.3 Data Fetching Strategy Compliance
+
+| Page | Design | Implementation | Status |
+|------|--------|----------------|:------:|
+| Dashboard | Server Component + fetch | Server Component + direct query | ✅ |
+| Stats | Client + SWR | Client + SWR + `next/dynamic` lazy loading | ✅ |
+| Search | Client + SWR | Client + SWR | ✅ |
+| Level Test | Client + state | Client + state | ✅ |
 
 **Architecture Score: 95%**
 
 ---
 
-## 6. Convention Compliance
+## 11. Convention Compliance
 
-### 6.1 Naming Convention
+### 11.1 Naming
 
-| Category | Convention | Compliance | Violations |
-|----------|-----------|:----------:|------------|
-| Components | PascalCase exports | 100% | - |
-| Functions | camelCase | 100% | - |
-| Constants | UPPER_SNAKE_CASE | 100% | LEVELS, COLORS, COOKIE_NAME |
-| Files (component) | kebab-case.tsx | 100% | Consistent |
-| Files (utility) | camelCase.ts | 100% | - |
-| Folders | kebab-case | 100% | level-test, quiz-type-radar |
+| Category | Convention | Compliance | Notes |
+|----------|-----------|:----------:|-------|
+| Component exports | PascalCase | 100% | SummaryCards, CalendarHeatmap, AccuracyChart, etc. |
+| Functions | camelCase | 100% | getCalendarData, searchContents, verifyTelegramLogin |
+| Constants | UPPER_SNAKE_CASE | 100% | LEVELS, COLORS, COOKIE_NAME, FIVE_MINUTES |
+| Component files | kebab-case.tsx | 100% | summary-cards.tsx, calendar-heatmap.tsx |
+| Utility files | camelCase.ts | 100% | db.ts, auth.ts, session.ts |
+| Folders | kebab-case | 100% | level-test/, quiz-type-radar |
 
-### 6.2 Import Order
+### 11.2 Import Order
 
-All files follow: external libs -> internal `@/` imports -> relative imports. No violations.
+All files follow: external libs -> internal `@/` imports -> relative imports. No violations found.
 
-### 6.3 Environment Variables
+### 11.3 Environment Variables
 
-| Design Variable | Convention | Status |
-|-----------------|-----------|--------|
-| DATABASE_URL | Standard | ✅ |
-| BOT_TOKEN | Non-prefixed (server-only) | ✅ |
-| JWT_SECRET | Non-prefixed (server-only) | ✅ |
-| NEXT_PUBLIC_BOT_USERNAME | NEXT_PUBLIC_ prefix | ✅ |
+| Variable | Convention | Scope | Status |
+|----------|-----------|-------|:------:|
+| `DATABASE_URL` | Standard | Server | ✅ |
+| `BOT_TOKEN` | Non-prefixed | Server | ✅ |
+| `JWT_SECRET` | Non-prefixed | Server | ✅ |
+| `NEXT_PUBLIC_BOT_USERNAME` | `NEXT_PUBLIC_` | Client | ✅ |
 
 **Convention Score: 98%**
 
 ---
 
-## 7. Code Quality Notes
+## 12. Differences Found
 
-### 7.1 Positive
+### 12.1 Missing Features (Design O, Implementation X)
 
-- Clean separation of route handlers and query logic
-- Proper auth guard at layout level
-- Consistent error response format (`{ error: 'CODE' }`)
-- Dynamic imports for chart components (bundle optimization per design risk mitigation)
-- Connection pool limited to 5 (per design risk mitigation)
-- level_test_results properly saves test history for analytics
-- Dashboard page composes all 4 designed widgets (SummaryCards, CalendarHeatmap, TodaySummary, ReviewReminder)
+| Item | Design Location | Description | Priority |
+|------|-----------------|-------------|----------|
+| ContentDetailModal | design.md:88,521 | Click-to-view modal with furigana + translation + quizzes | Medium |
+| testId UUID | design.md:388 | Unique test session identifier in start response | Low |
+| shadcn/ui components | design.md:72,537-541 | Formal design system (Button, Card, etc.) | Low |
 
-### 7.2 Resolved Issues
+### 12.2 Added Features (Design X, Implementation O)
 
-| Severity | File | Issue | Resolution |
-|----------|------|-------|------------|
-| ~~Medium~~ | ~~`lib/queries/stats.ts`~~ | ~~streakHistory hardcoded to 0~~ | **FIXED**: Fetches from users.streakCount |
-| ~~Medium~~ | ~~`app/api/level-test/submit/route.ts`~~ | ~~No DB write~~ | **FIXED**: Inserts into levelTestResults |
-| ~~Low~~ | ~~`app/api/me/route.ts`~~ | ~~`gte` instead of `lte`~~ | **FIXED**: Uses `lte` correctly |
+| Item | Implementation Location | Description |
+|------|------------------------|-------------|
+| `GET /api/auth/token` | `app/api/auth/token/route.ts` | Bot-based HMAC token login (known workaround) |
+| `PATCH /api/level-test/submit` | `app/api/level-test/submit/route.ts:43` | Level apply endpoint |
+| `avgAccuracy` in calendar summary | `lib/queries/calendar.ts:20` | Extra summary field |
+| Local schema definition | `lib/schema.ts` | Replaces cross-directory import (improvement) |
+| Dockerfile security user | `web/Dockerfile:19` | nodejs user for runtime security |
 
-### 7.3 Remaining Issues
+### 12.3 Changed Features (Design != Implementation)
 
-| Severity | File | Issue |
-|----------|------|-------|
-| Low | `app/dashboard/search/page.tsx` | No content detail modal; only card list view |
-| Low | `app/api/level-test/start/route.ts` | No testId UUID in response |
-| Info | `lib/queries/stats.ts:101` | streakHistory.longest uses current streak as fallback (no longestStreak DB field) |
-
----
-
-## 8. Match Rate Summary
-
-```
-+-----------------------------------------------+
-|  Overall Match Rate: 92%  (was 78%)            |
-+-----------------------------------------------+
-|  API Endpoints:       97%  (7.75/8)   was  94% |
-|  Pages:              100%  (5/5)      was 100% |
-|  Components:          82%  (15/17)    was  52% |
-|  Query Modules:      100%  (4/4)      was 100% |
-|  Auth/Session:       100%  (5/5)      was 100% |
-|  Data Model:         100%  (6/6)      was  86% |
-|  Infrastructure:     100%  (2/2)      was  50% |
-|  Configuration:       85%  (4.5/6)    was  85% |
-|  Architecture:        95%             was  95% |
-|  Convention:          98%             was  98% |
-+-----------------------------------------------+
-|  Improvement: +14 points                       |
-|  Remaining gaps: 2 minor (low priority)        |
-+-----------------------------------------------+
-```
+| Item | Design | Implementation | Impact |
+|------|--------|----------------|--------|
+| Component extraction | 17 separate files | 7 files + 8 inline in pages | None (functional parity) |
+| Level-test submit request | `{ testId, answers: [{ quizId, answer }] }` | `{ questions, answers: Record<number, string> }` | Low |
+| streakHistory.longest | Separate longestStreak calculation | Uses current streakCount as fallback | Low (no DB field) |
+| Tailwind config | `tailwind.config.ts` file | CSS `@theme` in globals.css | None (Tailwind v4) |
+| Package versions | Next 15, React 19, jose 5 | Next 16, React 19.2, jose 6 | None (upgrades) |
+| Dockerfile RUN npm ci | `--omit=dev` | No flag (devDeps needed for build) | None |
 
 ---
 
-## 9. Recommended Actions
+## 13. Recommended Actions
 
-### 9.1 Completed (from v0.1)
+### 13.1 Deferred Improvements (Low Priority)
 
-| # | Action | Status |
+| # | Action | Impact |
 |---|--------|--------|
-| ~~1~~ | ~~Add level_test_results table + DB write~~ | ✅ Done |
-| ~~2~~ | ~~Add web service to docker-compose.yml~~ | ✅ Done |
-| ~~3~~ | ~~Fix streakHistory in stats query~~ | ✅ Done |
-| ~~4~~ | ~~Fix reviewDueCount query direction~~ | ✅ Done |
-| ~~5~~ | ~~Create TodaySummary component~~ | ✅ Done |
-| ~~6~~ | ~~Create ReviewReminder component~~ | ✅ Done |
+| 1 | Add ContentDetailModal to search page | Medium -- enables drill-down into content with furigana/translation/quizzes |
+| 2 | Add testId UUID to level test start response | Low -- no functional impact currently |
+| 3 | Extract inline components to separate files (search-filters, content-card, question-card, etc.) | Low -- refactoring only |
+| 4 | Initialize shadcn/ui for consistent design system | Low -- acceptable as-is for MVP |
 
-### 9.2 Deferred (Low Priority)
+### 13.2 Design Document Updates Needed
 
-| # | Action | Impact | Notes |
-|---|--------|--------|-------|
-| 1 | Add ContentDetailModal to search page | Medium | Future enhancement; card list view is functional |
-| 2 | Add testId UUID to level test start response | Low | Does not affect test flow since questions are passed directly |
-| 3 | Extract inline components to separate files | Low | Refactoring only; no functional impact |
-| 4 | Initialize shadcn/ui | Low | Raw Tailwind achieves same visual result; acceptable for MVP |
-
-### 9.3 Design Document Updates Needed
-
-These implementation decisions should be reflected back in the design document:
-
-- [ ] Update package versions (Next.js 16, React 19.2, drizzle-orm 0.45, recharts 3.8)
-- [ ] Document local schema approach (`lib/schema.ts`) instead of cross-directory import
-- [ ] Document Tailwind v4 CSS-based theme config (no `tailwind.config.ts`)
-- [ ] Document `avgAccuracy` addition in calendar summary response
-- [ ] Update level-test submit request format to match implementation
-- [ ] Add PATCH endpoint for level apply to API spec
+| # | Update |
+|---|--------|
+| 1 | Update package versions (Next 16.1.6, React 19.2.3, drizzle-orm 0.45.1, recharts 3.8.0, jose 6.2.1) |
+| 2 | Document local schema approach (`lib/schema.ts`) instead of cross-directory import |
+| 3 | Document Tailwind v4 CSS-based theme config (no `tailwind.config.ts`) |
+| 4 | Add `avgAccuracy` to calendar summary response spec |
+| 5 | Update level-test submit request format to `{ questions, answers: Record<number, string> }` |
+| 6 | Add `PATCH /api/level-test/submit` and `GET /api/auth/token` to API spec |
+| 7 | Document known deployment deviations (context, entrypoints, proxy network, HOSTNAME) |
 
 ---
 
-## 10. Synchronization Recommendation
+## 14. Match Rate Summary
 
-**Match Rate 92% -- Design and implementation match well.**
+```
++--------------------------------------------------+
+|  Overall Match Rate: 92%                          |
++--------------------------------------------------+
+|  API Endpoints:        97%   (7.75/8)             |
+|  Pages & Routing:     100%   (5/5)                |
+|  Components:           82%   (15/17 functional)   |
+|  Query Modules:       100%   (4/4)                |
+|  Auth / Session:      100%   (5/5)                |
+|  Data Model:          100%   (6/6)                |
+|  Infrastructure:      100%   (2/2 verifiable)     |
+|  Configuration:        85%   (4.5/6)              |
+|  Architecture:         95%                        |
+|  Convention:           98%                        |
++--------------------------------------------------+
+|  Remaining gaps: 3 (1 Medium, 2 Low)              |
+|  Recommendation: Proceed to Report phase          |
++--------------------------------------------------+
+```
 
-The 8 fixes addressed all high-priority and medium-priority gaps from v0.1. The remaining gaps are low-priority items that do not affect core functionality:
+---
 
-- **ContentDetailModal**: Deferred feature; search card list is functional as-is
-- **testId UUID**: Cosmetic; test flow works without session tracking
-- **shadcn/ui**: Acceptable deviation; raw Tailwind CSS achieves identical UX
-- **Component extraction**: Structural preference; all functionality is implemented inline
+## 15. Synchronization Recommendation
 
-**Recommendation**: Update design document to reflect accepted deviations, then proceed to Report phase.
+**Match Rate >= 90% -- Design and implementation match well.**
+
+Core functionality is fully implemented across all 5 pages, 8 API endpoints, 4 query modules, and the complete auth flow. The remaining gaps are:
+
+- **ContentDetailModal** (Medium): Feature gap; search works but lacks drill-down view. Can be deferred to a follow-up iteration.
+- **testId UUID** (Low): Cosmetic gap; test flow functions correctly without session tracking.
+- **shadcn/ui** (Low): Acceptable deviation; raw Tailwind achieves equivalent UX.
+
+**Recommendation**: Update design document to reflect accepted deviations (Section 13.2), then proceed to Report phase.
 
 ---
 
@@ -385,3 +361,4 @@ The 8 fixes addressed all high-priority and medium-priority gaps from v0.1. The 
 |---------|------|---------|--------|
 | 0.1 | 2026-03-15 | Initial gap analysis (78%) | Claude (gap-detector) |
 | 0.2 | 2026-03-15 | Re-analysis after 8 fixes (92%) | Claude (gap-detector) |
+| 0.3 | 2026-03-16 | Full re-analysis with detailed findings (92%) | Claude (gap-detector) |
