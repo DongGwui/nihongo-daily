@@ -6,3 +6,4 @@ dist/
 .idea/
 .bkit/
 data/
+seed.sql

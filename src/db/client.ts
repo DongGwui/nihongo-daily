@@ -4,7 +4,7 @@ import postgres from 'postgres';
 import * as schema from './schema.js';
 import { dbUrl } from '../lib/config.js';
 
-const client = postgres(dbUrl);
+const client = postgres(dbUrl, { ssl: false });
 export const db = drizzle(client, { schema });
 
 export async function initDatabase() {
