@@ -4,6 +4,8 @@ import utc from 'dayjs/plugin/utc.js';
 import timezone from 'dayjs/plugin/timezone.js';
 import { getUsersForTime, buildDailyMessage, recordDailyLog } from '../services/daily.service.js';
 import { formatDailyMessage } from '../bot/messages/daily.js';
+import { crawlAndSave } from './crawlers/nhk-easy.js';
+import { batchGenerateQuizzes } from './generators/quiz-generator.js';
 import type { Bot } from 'grammy';
 import type { BotContext } from '../bot/bot.js';
 import type { JlptLevel } from '../db/schema.js';
@@ -50,6 +52,29 @@ export function startScheduler(bot: Bot<BotContext>) {
       }
     } catch (err) {
       console.error('Scheduler error:', err);
+    }
+  });
+
+  // 매일 새벽 4시: NHK Easy News 크롤링 + Gemini 퀴즈 생성
+  cron.schedule('0 4 * * *', async () => {
+    console.log('[Scheduler] Starting daily content pipeline...');
+
+    try {
+      // NHK Easy News 크롤링 (최신 5개)
+      const crawled = await crawlAndSave(5);
+      console.log(`[Scheduler] Crawled ${crawled} NHK articles`);
+
+      // 퀴즈가 없는 콘텐츠에 Gemini 퀴즈 생성
+      if (config.GEMINI_API_KEY) {
+        for (const level of ['N5', 'N4', 'N3'] as JlptLevel[]) {
+          const generated = await batchGenerateQuizzes(level, 5);
+          if (generated > 0) {
+            console.log(`[Scheduler] Generated ${generated} quizzes for ${level}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[Scheduler] Content pipeline error:', err);
     }
   });
 
