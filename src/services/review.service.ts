@@ -1,7 +1,7 @@
 import { eq, and, lte, sql } from 'drizzle-orm';
 import { createEmptyCard, fsrs, generatorParameters, type Grade } from 'ts-fsrs';
 import { db } from '../db/client.js';
-import { reviewCards } from '../db/schema.js';
+import { reviewCards, quizzes } from '../db/schema.js';
 import type { CardType } from '../db/schema.js';
 
 const f = fsrs(generatorParameters());
@@ -83,6 +83,25 @@ export async function getCardById(cardId: number) {
     .where(eq(reviewCards.id, cardId))
     .limit(1);
   return card ?? null;
+}
+
+export async function getCardContent(cardId: number, cardType: string) {
+  if (cardType === 'vocabulary') {
+    const [quiz] = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.id, cardId))
+      .limit(1);
+
+    if (quiz) {
+      return {
+        front: quiz.question,
+        back: `정답: ${quiz.answer}${quiz.explanation ? `\n💡 ${quiz.explanation}` : ''}`,
+      };
+    }
+  }
+
+  return { front: `카드 #${cardId}`, back: `카드 #${cardId}` };
 }
 
 export async function getReviewStats(userId: number) {

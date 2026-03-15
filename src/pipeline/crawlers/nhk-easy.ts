@@ -179,18 +179,6 @@ async function fetchNhkArticleBody(
   };
 }
 
-async function translateWithGemini(title: string, bodyJa: string): Promise<string> {
-  if (!config.GEMINI_API_KEY) return '';
-
-  const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-  const result = await model.generateContent(
-    `다음 일본어 뉴스를 한국어로 번역해주세요. 번역문만 출력하세요.\n\n제목: ${title}\n본문: ${bodyJa}`,
-  );
-  return result.response.text().trim();
-}
-
 export async function fetchFromNhk(limit: number): Promise<ArticleContent[]> {
   console.log('[NHK] 인증 중...');
   const cookies = await nhkAuthenticate();
@@ -209,18 +197,17 @@ export async function fetchFromNhk(limit: number): Promise<ArticleContent[]> {
       if (!body || !body.bodyJa) continue;
 
       const title = meta.title.replace(/<[^>]*>/g, '');
-      const bodyKo = await translateWithGemini(title, body.bodyJa);
 
       results.push({
         title,
         bodyJa: body.bodyJa,
         bodyReading: body.bodyReading,
-        bodyKo,
+        bodyKo: '',
         source: 'nhk_easy',
         sourceUrl: `https://news.web.nhk/news/easy/${meta.news_id}/${meta.news_id}.html`,
       });
     } catch (err) {
-      console.error(`[NHK] 기사 처리 실패 (${meta.news_id}):`, err);
+      console.error(`[NHK] 기사 처리 실패 (${meta.news_id}):`, (err as Error).message?.slice(0, 100));
     }
   }
 

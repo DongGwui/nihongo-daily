@@ -1,6 +1,4 @@
-import { db } from '../../db/client.js';
-import { vocabularies, quizzes } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { getCardContent } from '../../services/review.service.js';
 
 interface ReviewCardData {
   id: number;
@@ -8,36 +6,8 @@ interface ReviewCardData {
   cardRefId: number;
 }
 
-interface ReviewCardContent {
-  front: string;
-  back: string;
-}
-
-async function getCardContent(card: ReviewCardData): Promise<ReviewCardContent> {
-  if (card.cardType === 'vocabulary') {
-    // cardRefId는 quiz ID (오답 시 퀴즈 ID로 복습카드 생성)
-    const [quiz] = await db
-      .select()
-      .from(quizzes)
-      .where(eq(quizzes.id, card.cardRefId))
-      .limit(1);
-
-    if (quiz) {
-      return {
-        front: quiz.question,
-        back: `정답: ${quiz.answer}${quiz.explanation ? `\n💡 ${quiz.explanation}` : ''}`,
-      };
-    }
-  }
-
-  return {
-    front: `카드 #${card.id}`,
-    back: `카드 #${card.id}`,
-  };
-}
-
 export async function formatReviewCard(card: ReviewCardData, side: 'front' | 'back'): Promise<string> {
-  const content = await getCardContent(card);
+  const content = await getCardContent(card.cardRefId, card.cardType);
 
   if (side === 'front') {
     return (
