@@ -1,0 +1,42 @@
+{
+  "name": "nihongo-daily",
+  "version": "0.1.0",
+  "description": "일본어 데일리 학습 Telegram 봇",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "crawl:nhk": "tsx scripts/crawl-nhk.ts",
+    "import:tatoeba": "tsx scripts/import-tatoeba.ts",
+    "import:jmdict": "tsx scripts/import-jmdict.ts",
+    "generate:quizzes": "tsx scripts/generate-quizzes.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "grammy": "^1.31.0",
+    "drizzle-orm": "^0.38.0",
+    "postgres": "^3.4.0",
+    "@google/generative-ai": "^0.21.0",
+    "ts-fsrs": "^4.4.0",
+    "node-cron": "^3.0.0",
+    "cheerio": "^1.0.0",
+    "dayjs": "^1.11.0",
+    "dotenv": "^16.4.0",
+    "zod": "^3.24.0",
+    "ioredis": "^5.4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsx": "^4.19.0",
+    "drizzle-kit": "^0.30.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.10.0",
+    "@types/node-cron": "^3.0.0"
+  }
+}

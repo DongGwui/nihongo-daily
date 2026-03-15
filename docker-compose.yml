@@ -1,0 +1,51 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nihongo-app
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - DB_HOST=shared-postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=nihongo
+      - DB_SSLMODE=disable
+      - REDIS_HOST=nihongo-redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DAILY_CRON_ENABLED=true
+      - DEFAULT_TIMEZONE=Asia/Seoul
+    networks:
+      - shared
+      - nihongo-internal
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: nihongo-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - nihongo-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  shared:
+    external: true
+  nihongo-internal:
+    driver: bridge
+
+volumes:
+  redis_data:
