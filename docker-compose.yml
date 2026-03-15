@@ -53,6 +53,7 @@ services:
       - JWT_SECRET=${JWT_SECRET}
     networks:
       - shared
+      - proxy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.nihongo-web.rule=Host(`nihongo.dltmxm.link`)"
@@ -63,6 +64,8 @@ services:
 networks:
   shared:
     name: shared_shared
+    external: true
+  proxy:
     external: true
   nihongo-internal:
     driver: bridge
